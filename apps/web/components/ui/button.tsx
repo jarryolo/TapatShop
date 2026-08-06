@@ -1,4 +1,5 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import Link from "next/link";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils/cn";
 
@@ -34,6 +35,41 @@ const SIZES: Record<ButtonSize, string> = {
   lg: "h-12 px-6 text-base gap-2",
 };
 
+const BASE =
+  "relative inline-flex items-center justify-center rounded-[var(--radius-ctrl)] font-semibold transition-[background-color,border-color,filter] duration-150 ease-[var(--ease-out-soft)]";
+
+/**
+ * A link that looks like a button.
+ *
+ * Navigation is an anchor, not a button — nesting an `<a>` inside a `<button>` is invalid
+ * HTML, and a button that navigates loses middle-click, open-in-new-tab, and the status bar
+ * preview. Same styling, right element.
+ */
+export function ButtonLink({
+  href,
+  variant = "primary",
+  size = "md",
+  fullWidth = false,
+  className,
+  children,
+  ...props
+}: {
+  href: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+} & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
+  return (
+    <Link
+      href={href}
+      className={cn(BASE, VARIANTS[variant], SIZES[size], fullWidth && "w-full", className)}
+      {...props}
+    >
+      {children}
+    </Link>
+  );
+}
+
 /**
  * The one button. Never more than one `primary` per view — docs/05.
  *
@@ -61,8 +97,7 @@ export function Button({
       disabled={isDisabled}
       aria-busy={loading || undefined}
       className={cn(
-        "relative inline-flex items-center justify-center rounded-[var(--radius-ctrl)] font-semibold",
-        "transition-[background-color,border-color,filter] duration-150 ease-[var(--ease-out-soft)]",
+        BASE,
         "disabled:cursor-not-allowed disabled:opacity-50",
         VARIANTS[variant],
         SIZES[size],

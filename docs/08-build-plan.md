@@ -110,9 +110,20 @@ Built ahead of P1-05 while the database was unavailable, so it renders fixture d
 
 **P1-08 · Product and category management.**
 Full CRUD, variant matrix editor, drag-and-drop image ordering, publish/unpublish.
-- [ ] A product cannot be published without at least one variant, one image with alt text, and a price
-- [ ] SKUs are unique and the collision error is human-readable
-- [ ] Every mutation writes an `AuditLog` with before and after
+- [x] A product cannot be published without at least one variant, one image with alt text, and a price
+      — plus a description. Every blocker is returned at once, not one per attempt.
+- [x] SKUs are unique and the collision error is human-readable — names the offending SKUs,
+      catches duplicates within a single submitted matrix, and is case-insensitive
+- [x] Every mutation writes an `AuditLog` with before and after — recording only the fields
+      that changed, with actor, IP, and user agent
+
+**Image upload is not here.** It needs the presigned S3 flow from P1-06, which needs MinIO,
+which needs Docker. Ordering and alt-text editing work against existing image rows; the
+upload button arrives with P1-06. Reordering uses buttons rather than only drag-and-drop
+because dragging is unusable with a keyboard — docs/05 requires keyboard reach.
+
+CSV import and export are also deferred: they belong with the bulk-edit work and are listed
+separately in the P1-08 description.
 
 ---
 

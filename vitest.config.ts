@@ -23,5 +23,16 @@ export default defineConfig({
     // Argon2 is deliberately slow, and the integration suite talks to MySQL.
     testTimeout: 20_000,
     hookTimeout: 20_000,
+
+    /**
+     * One test file at a time.
+     *
+     * The integration suites share a single database and each clears the tables it uses in
+     * beforeEach. Run in parallel, one file deletes another's fixtures mid-test and both
+     * fail in ways that look like application bugs. The alternatives — a database per file,
+     * or scoping every wipe to a per-file prefix — cost more than the second this saves on a
+     * suite that finishes in about four.
+     */
+    fileParallelism: false,
   },
 });

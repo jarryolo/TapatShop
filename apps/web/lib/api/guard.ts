@@ -1,6 +1,7 @@
 import type { Role } from "@tapatshop/shared";
 
 import { auth, sessionIsCurrent } from "@/lib/auth";
+import { clientIp } from "@/lib/rate-limit";
 
 import { fail } from "./respond";
 
@@ -77,4 +78,18 @@ export function requireStaff(): Promise<GuardResult> {
 /** Admin only: settings, staff management, the audit log, and admin-assisted recovery. */
 export function requireAdmin(): Promise<GuardResult> {
   return requireRole("admin");
+}
+
+/**
+ * The actor shape the services want, with the request context the audit log records.
+ *
+ * IP and user agent are on the audit row because "who changed this price" sometimes means
+ * "was that really them, or someone with their session".
+ */
+export function auditActor(actor: Actor, request: Request) {
+  return {
+    id: actor.id,
+    ip: clientIp(request.headers),
+    userAgent: request.headers.get("user-agent"),
+  };
 }
