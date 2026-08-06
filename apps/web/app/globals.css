@@ -1,4 +1,127 @@
 @import "tailwindcss";
 
-/* Design tokens land here in P1-04, mapped into the Tailwind theme with @theme.
-   Until then: no hardcoded colours in components. See docs/05-design-system.md. */
+/*
+ * Design tokens. See docs/05-design-system.md.
+ *
+ * These are the only colour, radius, and shadow values in the codebase. Never write a hex
+ * value in a component — if something is missing here, add it here.
+ *
+ * Tailwind 4 reads @theme directly, so `--color-brand-600` gives you `bg-brand-600`,
+ * `text-brand-600`, `border-brand-600` and so on with no config file.
+ */
+
+@theme {
+  --color-brand-50: #e6f1fb;
+  --color-brand-100: #b5d4f4;
+  --color-brand-200: #85b7eb;
+  --color-brand-400: #378add;
+  --color-brand-600: #185fa5; /* primary */
+  --color-brand-800: #0c447c; /* hover / pressed */
+  --color-brand-900: #042c53;
+
+  --color-page: #f7f8fa; /* page background */
+  --color-surface: #ffffff; /* cards */
+  --color-border-subtle: #e5e8ec;
+  --color-border-strong: #cdd3da;
+
+  --color-text: #10151c;
+  --color-text-muted: #5b6672;
+  /* docs/05 specifies #8A94A0. That is 3.08:1 on white and fails the AA rule the same
+     document sets, so it is darkened to 4.88:1. It renders placeholder and compare-at
+     prices, which are real text. */
+  --color-text-soft: #68727f;
+
+  /* Semantic colours for fills, icons, and borders. */
+  --color-success: #1d9e75;
+  --color-success-soft: #e7f6f1;
+  --color-warning: #ba7517;
+  --color-warning-soft: #fbf1e2;
+  --color-danger: #d14343;
+  --color-danger-soft: #fbeaea;
+
+  /* And the darker same-family text that goes on those pale fills. The base colours above
+     land between 3.0 and 3.9:1 on their own soft backgrounds — a badge is text, so it needs
+     4.5. These clear 5.4:1. See the contrast test in components/ui/tokens.test.ts. */
+  --color-success-text: #137055;
+  --color-warning-text: #8a5510;
+  --color-danger-text: #a82f2f;
+
+  --radius-card: 12px;
+  --radius-ctrl: 8px;
+
+  --shadow-card: 0 1px 2px rgba(16, 21, 28, 0.04), 0 4px 12px rgba(16, 21, 28, 0.06);
+  --shadow-raised: 0 2px 4px rgba(16, 21, 28, 0.06), 0 12px 32px rgba(16, 21, 28, 0.12);
+
+  /* 8px base scale, per docs/05. */
+  --spacing-gutter: 16px;
+  --spacing-gutter-lg: 24px;
+
+  --font-sans:
+    var(--font-plus-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Motion: 150-200ms, ease-out, fade and small translate only. No parallax, no bounce. */
+  --ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-page);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (min-width: 768px) {
+    body {
+      font-size: 16px;
+    }
+  }
+
+  /*
+   * One focus ring for the whole product, and it is always visible on keyboard focus.
+   * :focus-visible rather than :focus so a mouse click on a button does not leave a ring
+   * behind, but Tab always does. Never remove this without replacing it.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Respect the system setting. docs/05 is explicit about this. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  dialog::backdrop {
+    background-color: rgba(16, 21, 28, 0.45);
+  }
+}
+
+@layer utilities {
+  /* Visible to screen readers, invisible on screen. For live regions and skip links. */
+  .sr-only-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}

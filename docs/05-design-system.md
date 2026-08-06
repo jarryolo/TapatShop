@@ -25,11 +25,16 @@ Tailwind theme. Never hardcode a hex value in a component.
 
   --text:      #10151C;
   --text-muted:#5B6672;
-  --text-soft: #8A94A0;
+  --text-soft: #68727F;  /* was #8A94A0 — see "Contrast corrections" below */
 
   --success:   #1D9E75;
   --warning:   #BA7517;
   --danger:    #D14343;
+
+  /* Darker same-family text for badges. See "Contrast corrections" below. */
+  --success-text: #137055;
+  --warning-text: #8A5510;
+  --danger-text:  #A82F2F;
 
   --radius-card: 12px;
   --radius-ctrl: 8px;
@@ -39,6 +44,23 @@ Tailwind theme. Never hardcode a hex value in a component.
 
 White cards on a very slightly grey page is what makes cards read as cards. Do not put
 white cards on a white page and rely on borders alone.
+
+### Contrast corrections
+
+Four of the original values failed the WCAG AA rule this document sets, and were changed
+during P1-04. Measured ratios are pinned in `apps/web/components/ui/tokens.test.ts` — change
+a token to something that fails and the test suite goes red.
+
+| Token | Was | Now | Why |
+|---|---|---|---|
+| `--text-soft` | `#8A94A0` | `#68727F` | 3.08:1 on white. It renders placeholders and compare-at prices, which are real text. Now 4.88:1. |
+| `--success-text` | used `--success` | `#137055` | `#1D9E75` on its own pale fill is 3.04:1. Now 5.42:1. |
+| `--warning-text` | used `--warning` | `#8A5510` | `#BA7517` on its own pale fill is 3.33:1. Now 5.54:1. |
+| `--danger-text` | used `--danger` | `#A82F2F` | `#D14343` on its own pale fill is 3.93:1. Now 5.80:1. |
+
+The base `--success` / `--warning` / `--danger` values are unchanged and still correct for
+fills, icons, and borders — white on `--danger` is 4.57:1, so the danger button is fine. It
+is only *text on the pale fill* that needed the darker variant.
 
 ## Type
 

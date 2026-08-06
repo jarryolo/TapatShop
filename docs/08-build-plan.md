@@ -54,10 +54,13 @@ Write `seed.ts` per `docs/03`.
 
 **P1-04 · Design system primitives.**
 Tokens into `globals.css` and the Tailwind theme. Build every component in `docs/05`.
-- [ ] Every primitive has default, hover, active, focus-visible, disabled, loading states
-- [ ] A `/dev/ui` page renders all of them for review
-- [ ] Keyboard navigable with a visible focus ring
-- [ ] Body text passes 4.5:1 contrast
+- [x] Every primitive has default, hover, active, focus-visible, disabled, loading states
+- [x] A `/dev/ui` page renders all of them for review — 404s in production, verified against
+      a real production build
+- [x] Keyboard navigable with a visible focus ring — one global `:focus-visible` rule, tabs
+      use a roving tabindex, dialogs trap focus natively
+- [x] Body text passes 4.5:1 contrast — enforced by `components/ui/tokens.test.ts`. Four
+      tokens in `docs/05` failed and were corrected; see "Contrast corrections" there.
 
 **P1-05 · Auth.**
 Auth.js with credentials + Google per `docs/07`. Registration, login, email verification,
