@@ -212,9 +212,21 @@ Staging environment with a webhook tunnel must exist before starting.
 - [ ] Guest checkout works end to end
 
 **P3-03 · Stock reservation.** Per `docs/03`, with `FOR UPDATE` locking and Redis TTL.
-- [ ] **Concurrency test:** two simultaneous checkouts for the last unit — exactly one succeeds
-- [ ] Reservations expire after 15 minutes and stock returns
-- [ ] The sweeper releases reservations Redis lost
+- [x] **Concurrency test:** two simultaneous checkouts for the last unit — exactly one
+      succeeds. Also holds for ten simultaneous attempts on three units: exactly three win
+      and nothing oversells. **The test was proved able to fail**: the same race run without
+      `SELECT ... FOR UPDATE` oversells, holding 2 units of a stock of 1.
+- [x] Reservations expire after 15 minutes and stock returns — and availability filters on
+      `expiresAt` directly, so an expired hold stops blocking stock even if Redis and the
+      sweeper have both failed
+- [x] The sweeper releases reservations Redis lost — `POST /api/v1/internal/sweep-reservations`,
+      guarded by `CRON_SECRET` with a constant-time compare. Verified: no secret 403, wrong
+      secret 403, right secret 200. It refuses to run at all when the secret is unset, since
+      an open endpoint that drops reservations is a denial-of-service vector.
+
+Deliberately built ahead of P3-02, because it needs no PayMongo credentials and it is the
+riskiest code in the system. Stock is reserved, never decremented — the decrement happens on
+the paid webhook through the inventory ledger, per docs/03.
 
 **P3-04 · PayMongo integration.** Checkout session creation per `docs/06`.
 - [ ] Line items sum exactly to `order.totalCents`; assertion fails loudly if not
