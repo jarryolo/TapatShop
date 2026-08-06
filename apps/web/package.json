@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tapatshop/db": "workspace:*",
     "@tapatshop/shared": "workspace:*",
     "dotenv": "^17.4.2",
     "next": "^15.5.22",

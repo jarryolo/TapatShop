@@ -14,6 +14,10 @@ loadEnv({ path: path.join(__dirname, "../../.env"), quiet: true });
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // Workspace packages ship TypeScript source rather than a build step, so Next has to
+  // compile them itself.
+  transpilePackages: ["@tapatshop/db", "@tapatshop/shared"],
+
   // Pin the monorepo root. Without this Next walks up looking for a lockfile and can land
   // somewhere outside the repo, which silently breaks standalone output file tracing.
   outputFileTracingRoot: path.join(__dirname, "../.."),

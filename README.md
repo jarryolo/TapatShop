@@ -16,12 +16,19 @@ Next.js 15 · TypeScript strict · MySQL 8 · Prisma · Auth.js · Redis · Tail
 4. `pnpm docker:up` — starts MySQL on 3306, Redis on 6379, and MinIO on 9000 with its
    console on 9001. First boot creates the `tapatshop` and `tapatshop_shadow` databases and
    the media bucket.
-5. `pnpm dev` — the app is at http://localhost:3000, and http://localhost:3000/api/v1/health
+5. `pnpm db:migrate` then `pnpm db:seed` — creates the tables and fills them with a store
+   worth reviewing: 12 products, 7 orders across the status combinations, and a working
+   inventory ledger. Sign in as any seeded email with the password `tapatshop123`.
+6. `pnpm dev` — the app is at http://localhost:3000, and http://localhost:3000/api/v1/health
    should answer `{"status":"ok"}`.
-6. `pnpm typecheck && pnpm lint && pnpm test` — run this before declaring any ticket done.
+7. `pnpm typecheck && pnpm lint && pnpm test` — run this before declaring any ticket done.
 
-Database migrations and seed data arrive in ticket P1-02; until then the app does not talk
-to MySQL, so steps 4 and 5 are independent.
+**Already running MySQL and Redis yourself?** Skip step 4 and run
+`mysql -u root -p < scripts/setup-local-mysql.sql` once instead. It creates the same two
+databases and the same `tapat` user, so nothing else changes.
+
+`pnpm db:reset` drops everything, re-runs the migrations, and re-seeds. Use it whenever the
+local data gets into a state you do not trust.
 
 To receive PayMongo webhooks locally you will need a tunnel — see
 `docs/06-payments-paymongo.md`. Not needed before Phase 3.

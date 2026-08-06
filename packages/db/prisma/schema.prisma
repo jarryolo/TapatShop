@@ -3,11 +3,16 @@
 
 generator client {
   provider = "prisma-client-js"
+
+  // Generated into the package rather than node_modules so the output survives a pnpm
+  // prune and so both apps/web and the seed script resolve the same client.
+  output = "../generated/client"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 // ─────────────────────────────  enums  ─────────────────────────────

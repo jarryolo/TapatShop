@@ -9,18 +9,14 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "generate": "prisma generate",
-    "migrate": "prisma migrate dev",
-    "studio": "prisma studio"
-  },
-  "prisma": {
-    "schema": "prisma/schema.prisma"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.3"
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3"
   },
   "devDependencies": {
+    "@types/node": "^24.10.1",
     "prisma": "^6.19.3",
     "typescript": "^5.9.3"
   }

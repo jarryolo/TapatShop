@@ -21,7 +21,8 @@ build/
 coverage/
 .vitest/
 
-# Prisma
+# Prisma — the client is generated, never committed
+packages/db/generated/
 packages/db/prisma/*.db
 packages/db/prisma/*.db-journal
 
