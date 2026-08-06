@@ -130,10 +130,16 @@ separately in the P1-08 description.
 ## Phase 2 — Storefront
 
 **P2-01 · Catalog listing.** Home, category pages, filters, sort, pagination.
-- [ ] Grid is 2-up mobile, 4-up desktop, matching `docs/05`
-- [ ] Filters and sort are URL state and survive refresh and sharing
-- [ ] No N+1 queries — verify with Prisma query logging
-- [ ] LCP under 2.5s on a throttled 4G profile
+- [x] Grid is 2-up mobile, 4-up desktop, matching `docs/05`
+- [x] Filters and sort are URL state and survive refresh and sharing — pagination carries
+      every other filter, and an unparseable query string falls back rather than erroring
+- [x] No N+1 queries — measured with `PRISMA_LOG_QUERIES=true`: **8 statements for a page of
+      12 products and 8 for a page of 4.** Constant, not proportional.
+- [ ] LCP under 2.5s on a throttled 4G profile — **not measured.** Needs Lighthouse or a
+      throttled browser profile, which is not available here. First Load JS is 119 kB and the
+      pages are server-rendered with `revalidate = 300`, but that is a proxy, not the number.
+      The real lever is images: they are plain `<img>` with no optimisation until P1-06 gives
+      next/image a loader and real files, so measuring before then would not reflect launch.
 
 **P2-02 · Search.** FULLTEXT search plus autocomplete.
 - [ ] Suggest returns in under 200ms with seed data
