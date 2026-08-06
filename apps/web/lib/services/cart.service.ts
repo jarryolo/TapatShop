@@ -3,6 +3,8 @@ import type { Prisma, PrismaClient } from "@tapatshop/db";
 import { db } from "@/lib/db";
 import { type Cents, lineTotal, memberUnitPrice, sumCents } from "@/lib/utils/money";
 
+import { rejectionMessage, validateCoupon } from "./coupon.service";
+
 /**
  * The cart. See docs/03 for the guest-cart rules and docs/CLAUDE.md for the money rules.
  *
@@ -109,6 +111,9 @@ export interface PricedLine {
   quantity: number;
   lineTotalCents: Cents;
   stockQty: number;
+  weightGrams: number;
+  /** What is actually being charged for — the requested quantity, capped by stock. */
+  effectiveQuantity: number;
   issue: LineIssue | null;
 }
 
@@ -116,7 +121,16 @@ export interface PricedCart {
   cartId: string | null;
   lines: PricedLine[];
   subtotalCents: Cents;
+  /** Off the subtotal, from a coupon. Never larger than the subtotal. */
+  discountCents: Cents;
+  /** What the customer pays for the goods. Shipping is added at checkout. */
+  totalCents: Cents;
+  couponCode: string | null;
+  /** Set when a code is on the cart but no longer applies, so the page can say why. */
+  couponMessage: string | null;
+  freeShipping: boolean;
   itemCount: number;
+  totalWeightGrams: number;
   /** True when anything changed under the customer since they added it. */
   hasIssues: boolean;
 }
@@ -125,7 +139,13 @@ export const EMPTY_CART: PricedCart = {
   cartId: null,
   lines: [],
   subtotalCents: 0,
+  discountCents: 0,
+  totalCents: 0,
+  couponCode: null,
+  couponMessage: null,
+  freeShipping: false,
   itemCount: 0,
+  totalWeightGrams: 0,
   hasIssues: false,
 };
 
@@ -139,11 +159,24 @@ export const EMPTY_CART: PricedCart = {
  * An out-of-stock or deleted line is reported, not silently dropped. A cart that quietly
  * loses items is worse than one that explains itself.
  */
+export interface PriceOptions {
+  memberPercent?: number;
+  userId?: string | null;
+  isMember?: boolean;
+  /** Needed to price a free-shipping coupon. Zero on the cart page, real at checkout. */
+  shippingCents?: Cents;
+}
+
 export async function priceCart(
   tx: Db,
   cartId: string | null,
-  memberPercent = 0
+  options: PriceOptions | number = {}
 ): Promise<PricedCart> {
+  // Historically this took a bare percentage. Accepting both keeps the call sites that only
+  // care about member pricing short.
+  const opts: PriceOptions = typeof options === "number" ? { memberPercent: options } : options;
+  const memberPercent = opts.memberPercent ?? 0;
+
   if (!cartId) return EMPTY_CART;
 
   const items = await tx.cartItem.findMany({
@@ -161,6 +194,7 @@ export async function priceCart(
           priceCents: true,
           stockQty: true,
           isActive: true,
+          weightGrams: true,
           product: {
             select: {
               name: true,
@@ -210,17 +244,87 @@ export async function priceCart(
       quantity: item.quantity,
       lineTotalCents: lineTotal(unitPrice, effectiveQuantity),
       stockQty: variant.stockQty,
+      weightGrams: variant.weightGrams,
+      effectiveQuantity,
       issue,
     };
   });
 
+  const subtotalCents = sumCents(lines.map((line) => line.lineTotalCents));
+
+  /**
+   * The coupon is revalidated here rather than trusted from when it was applied.
+   *
+   * A code that has since expired, hit its cap, or no longer clears the minimum simply
+   * stops discounting, and the cart says so. Nothing has to write to the cart row for that
+   * to happen, which means there is no stale-discount state to go wrong.
+   */
+  const cart = await tx.cart.findUnique({ where: { id: cartId }, select: { couponCode: true } });
+  let discountCents = 0;
+  let freeShipping = false;
+  let couponMessage: string | null = null;
+
+  if (cart?.couponCode) {
+    const result = await validateCoupon(tx, cart.couponCode, {
+      subtotalCents,
+      shippingCents: opts.shippingCents ?? 0,
+      userId: opts.userId ?? null,
+      isMember: opts.isMember ?? false,
+    });
+
+    if (result.kind === "ok") {
+      discountCents = result.applied.discountCents;
+      freeShipping = result.applied.type === "free_shipping";
+    } else {
+      couponMessage = rejectionMessage(result);
+    }
+  }
+
   return {
     cartId,
     lines,
-    subtotalCents: sumCents(lines.map((line) => line.lineTotalCents)),
+    subtotalCents,
+    discountCents,
+    totalCents: Math.max(0, subtotalCents - discountCents),
+    couponCode: cart?.couponCode ?? null,
+    couponMessage,
+    freeShipping,
     itemCount: lines.reduce((sum, line) => sum + (line.issue ? 0 : line.quantity), 0),
+    totalWeightGrams: lines.reduce(
+      (total, line) => total + line.weightGrams * line.effectiveQuantity,
+      0
+    ),
     hasIssues: lines.some((line) => line.issue !== null),
   };
+}
+
+/** Puts a code on the cart, or refuses with a reason. The discount is never stored. */
+export async function applyCoupon(
+  tx: Db,
+  cartId: string,
+  code: string,
+  context: { subtotalCents: Cents; userId?: string | null; isMember?: boolean }
+): Promise<{ kind: "ok" } | { kind: "rejected"; message: string }> {
+  const result = await validateCoupon(tx, code, {
+    subtotalCents: context.subtotalCents,
+    shippingCents: 0,
+    userId: context.userId ?? null,
+    isMember: context.isMember ?? false,
+  });
+
+  if (result.kind !== "ok") {
+    return { kind: "rejected", message: rejectionMessage(result) };
+  }
+
+  await tx.cart.update({
+    where: { id: cartId },
+    data: { couponCode: code.trim().toUpperCase() },
+  });
+  return { kind: "ok" };
+}
+
+export async function removeCoupon(tx: Db, cartId: string): Promise<void> {
+  await tx.cart.update({ where: { id: cartId }, data: { couponCode: null } });
 }
 
 // ─────────────────────────────  mutations  ─────────────────────────────

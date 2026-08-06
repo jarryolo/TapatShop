@@ -204,12 +204,25 @@ Staging environment with a webhook tunnel must exist before starting.
       ₱2,500 is free, ₱2,501 is free
 
 **P3-02 · Checkout flow.** Three steps, server-side re-pricing, coupon application.
-- [ ] Client-supplied prices are ignored entirely — test by tampering with the payload
-- [ ] Price or stock changes since the cart page are surfaced before payment, not after
-- [ ] Coupon eligibility, expiry, usage caps, and member-only rules all enforced server-side
-- [ ] Member discount applied server-side at the unit level, then the coupon at the subtotal
+- [x] Client-supplied prices are ignored entirely — tested by tampering. The request carries
+      an address and a rate id and nothing else about money; `seenSubtotalCents` exists only
+      so the server can *warn* that something moved. Claiming a ₱370 basket costs 1 centavo
+      returns the real ₱370 plus a "prices have changed" notice.
+- [x] Price or stock changes since the cart page are surfaced before payment, not after —
+      `POST /checkout/validate` reserves nothing and reports every change; a line that has
+      become unavailable blocks checkout entirely
+- [x] Coupon eligibility, expiry, usage caps, and member-only rules all enforced server-side,
+      and revalidated on every cart read — a code that expires while sitting in the cart
+      stops discounting and says why
+- [x] Member discount applied server-side at the unit level, then the coupon at the subtotal
       level; a member with an unverified email gets list price
-- [ ] Guest checkout works end to end
+- [x] Guest checkout works end to end — verified live: order `TS-2026-000108` created as a
+      guest, I1 and I2 both hold, stock reserved and **not** decremented
+
+PayMongo itself is P3-04. `payment.service.ts` is the seam: in development with no key it
+returns a stub session so the flow can be walked end to end; in production it refuses rather
+than stubbing, because a stub that worked in production would hand out free orders. The stub
+page never marks an order paid — only a verified webhook may do that (docs/06).
 
 **P3-03 · Stock reservation.** Per `docs/03`, with `FOR UPDATE` locking and Redis TTL.
 - [x] **Concurrency test:** two simultaneous checkouts for the last unit — exactly one

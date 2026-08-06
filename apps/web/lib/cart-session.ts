@@ -70,7 +70,11 @@ export async function readCart(request?: Request): Promise<PricedCart & { isMemb
   }
 
   const cartId = await findCartId(db, context.identity);
-  const priced = await priceCart(db, cartId, context.memberPercent);
+  const priced = await priceCart(db, cartId, {
+    memberPercent: context.memberPercent,
+    userId: context.identity.userId,
+    isMember: context.isMember,
+  });
   return { ...priced, isMember: context.isMember };
 }
 

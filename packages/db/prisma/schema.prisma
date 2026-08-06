@@ -312,6 +312,12 @@ model Cart {
   id         String   @id @default(cuid())
   userId     String?
   guestToken String?  @unique
+
+  // The code only. The discount itself is recomputed on every read from the live coupon
+  // row, so an expired or exhausted code stops applying without anything having to update
+  // the cart.
+  couponCode String?
+
   expiresAt  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
