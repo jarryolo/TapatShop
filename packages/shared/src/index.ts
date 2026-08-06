@@ -8,6 +8,15 @@
 /** Every monetary value in the system is an integer count of centavos. ₱480.00 is 48000. */
 export type Cents = number;
 
+/**
+ * Mirrors the `Role` enum in the Prisma schema.
+ *
+ * Declared here rather than imported from @tapatshop/db so that client components and the
+ * future mobile app can talk about roles without pulling the Prisma client into the bundle.
+ * If the schema enum changes, change this too.
+ */
+export type Role = "customer" | "staff" | "admin";
+
 /** The error body every `/api/v1` route returns on failure. See docs/04-api-spec.md. */
 export type ApiErrorCode =
   | "VALIDATION_ERROR"

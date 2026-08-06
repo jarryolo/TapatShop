@@ -80,8 +80,14 @@ Presigned S3 uploads, 1:1 auto-crop, WebP conversion, four responsive widths.
 
 **P1-07 · Admin shell.**
 Sidebar layout, role-based nav, `DataTable`, `StatusPill`, empty and loading states.
-- [ ] Staff sees a reduced nav; settings and staff pages are admin-only
-- [ ] Table supports sort, filter, pagination, and keyboard navigation
+- [~] Staff sees a reduced nav; settings and staff pages are admin-only — the nav filtering
+      and `canAccess` are built and tested, but the **role comes from a fixture**. The real
+      session check and `middleware.ts` gate land with P1-05. These pages are currently open
+      to anyone who knows the URL.
+- [x] Table supports sort, filter, pagination, and keyboard navigation
+
+Built ahead of P1-05 while the database was unavailable, so it renders fixture data. Delete
+`lib/admin/fixtures.ts` when auth lands.
 
 **P1-08 · Product and category management.**
 Full CRUD, variant matrix editor, drag-and-drop image ordering, publish/unpublish.
