@@ -13,7 +13,11 @@ export type EmailTemplate =
   | "password-changed"
   | "provider-linked"
   | "sign-in-method-reminder"
-  | "email-changed";
+  | "email-changed"
+  | "order-confirmation"
+  | "order-shipped"
+  | "order-delivered"
+  | "order-refunded";
 
 export interface EmailMessage {
   to: string;

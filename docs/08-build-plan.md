@@ -256,10 +256,23 @@ the paid webhook through the inventory ledger, per docs/03.
 - [ ] Every case in the `docs/06` testing list has a passing test
 
 **P3-06 · Order lifecycle and email.** State machine, order events, transactional email.
-- [ ] Illegal transitions throw; the admin UI only offers legal ones
-- [ ] Confirmation, shipped, delivered, and refunded emails all send and render on mobile
-- [ ] Customer timeline shows public events only
-- [ ] Guest order tracking works with order number + email
+- [x] Illegal transitions throw; the admin UI only offers legal ones — the three axes are
+      explicit maps in `order.service.ts`, and `allowedNext()` is what any UI renders rather
+      than a hardcoded list. A test walks every listed transition and asserts the checker
+      agrees, so the two halves cannot drift.
+- [ ] Confirmation, shipped, delivered, and refunded emails all send and render on mobile —
+      **not done.** The triggers exist and fire (adding tracking queues the shipped email
+      exactly once, verified), but `email.service.ts` is still the logging stub: there is no
+      Resend key, so nothing sends and no rendering has been checked on any device.
+- [x] Customer timeline shows public events only — internal notes live on the same table and
+      are filtered out at the query, verified against the seeded "item inspected on return,
+      resalable" note
+- [x] Guest order tracking works with order number + email — verified live. A wrong email
+      returns byte-identical output to a nonexistent order, so the endpoint cannot be used to
+      probe which order numbers are real. Rate limited to 5/min.
+
+Order lifecycle and tracking were built without PayMongo. The paid-webhook side of this
+ticket belongs with P3-05.
 
 ---
 
