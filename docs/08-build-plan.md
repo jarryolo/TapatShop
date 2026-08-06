@@ -46,11 +46,11 @@ Write `seed.ts` per `docs/03`.
 
 **P1-03 · Money and format utilities.**
 `lib/utils/money.ts` and `format.ts`. Centavo arithmetic, PHP formatting, Asia/Manila dates.
-- [ ] `formatPeso(123450)` → `₱1,234.50`
-- [ ] Percentage discounts round consistently and never produce fractional centavos
-- [ ] `memberPrice(priceCents, percent)` rounds once per unit per `docs/01`, so
+- [x] `formatPeso(123450)` → `₱1,234.50`
+- [x] Percentage discounts round consistently and never produce fractional centavos
+- [x] `memberPrice(priceCents, percent)` rounds once per unit per `docs/01`, so
       `lineTotal == memberUnitPrice * qty` holds exactly
-- [ ] Unit tests cover zero, negative, and large values
+- [x] Unit tests cover zero, negative, and large values
 
 **P1-04 · Design system primitives.**
 Tokens into `globals.css` and the Tailwind theme. Build every component in `docs/05`.

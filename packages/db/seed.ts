@@ -24,7 +24,13 @@ const db = new PrismaClient();
 const DEV_PASSWORD = "tapatshop123";
 const MEMBER_DISCOUNT_PERCENT = 10;
 
-/** Mirrors the rule in docs/01-product-spec.md. Rounded once, per unit, so I2 holds. */
+/**
+ * Mirrors the rule in docs/01-product-spec.md. Rounded once, per unit, so I2 holds.
+ *
+ * Duplicated on purpose: the canonical implementation is apps/web/lib/utils/money.ts, and
+ * packages/db must not depend on the web app. If the rounding rule ever changes, both have
+ * to change. Worth collapsing into packages/shared before the mobile app needs it too.
+ */
 function memberUnitPrice(priceCents: number, percent: number): number {
   return priceCents - Math.round((priceCents * percent) / 100);
 }
