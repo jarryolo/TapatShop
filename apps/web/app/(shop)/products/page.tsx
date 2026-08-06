@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { CatalogListing } from "@/components/shop/catalog-listing";
 import { auth } from "@/lib/auth";
@@ -62,9 +63,9 @@ export default async function ProductsPage({
         {query.q && page.meta.total === 0 ? (
           <p className="mt-1 text-sm text-text-muted">
             Nothing matched that. Try a shorter word, or{" "}
-            <a href="/products" className="font-semibold text-brand-600 hover:underline">
+            <Link href="/products" className="font-semibold text-brand-600 hover:underline">
               browse everything
-            </a>
+            </Link>
             .
           </p>
         ) : null}

@@ -35,17 +35,17 @@ To receive PayMongo webhooks locally you will need a tunnel — see
 
 ## Scripts
 
-| Command                             | What it does                                       |
-| ----------------------------------- | -------------------------------------------------- |
-| `pnpm dev`                          | Next.js dev server                                 |
+| Command                             | What it does                                                                                                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                          | Next.js dev server                                                                                                                                                      |
 | `pnpm build` / `pnpm start`         | Production build and serve. Stop `pnpm dev` first — they share `apps/web/.next`, and building over a running dev server yields a bundle that only fails at request time |
-| `pnpm typecheck`                    | `tsc --noEmit` across every workspace package      |
-| `pnpm lint` / `pnpm lint:fix`       | ESLint across the repo                             |
-| `pnpm test` / `pnpm test:watch`     | Vitest                                             |
-| `pnpm format` / `pnpm format:check` | Prettier                                           |
-| `pnpm docker:up` / `docker:down`    | Start and stop local services                      |
-| `pnpm docker:reset`                 | Stop and **delete the volumes** — wipes local data |
-| `pnpm docker:logs`                  | Tail service logs                                  |
+| `pnpm typecheck`                    | `tsc --noEmit` across every workspace package                                                                                                                           |
+| `pnpm lint` / `pnpm lint:fix`       | ESLint across the repo                                                                                                                                                  |
+| `pnpm test` / `pnpm test:watch`     | Vitest                                                                                                                                                                  |
+| `pnpm format` / `pnpm format:check` | Prettier                                                                                                                                                                |
+| `pnpm docker:up` / `docker:down`    | Start and stop local services                                                                                                                                           |
+| `pnpm docker:reset`                 | Stop and **delete the volumes** — wipes local data                                                                                                                      |
+| `pnpm docker:logs`                  | Tail service logs                                                                                                                                                       |
 
 ## Layout
 

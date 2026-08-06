@@ -151,10 +151,18 @@ separately in the P1-08 description.
 - [x] Rate limited to 30/min — 30 through, 429 on the 31st, `Retry-After: 59`
 
 **P2-03 · Product detail.** Gallery, variant picker, stock state, related products.
-- [ ] Selecting a variant updates price, SKU, stock, and image without a page reload
-- [ ] Out-of-stock variants are visibly disabled, not hidden
-- [ ] "Only N left" appears at or below the low-stock threshold
-- [ ] Member price shows only for verified members
+- [x] Selecting a variant updates price, SKU, stock, and image without a page reload — every
+      variant's data is sent with the page, so selection is local state with no round trip
+- [x] Out-of-stock variants are visibly disabled, not hidden — verified by taking a variant
+      to zero through the ledger: it stays listed, struck through, marked "(sold out)", and
+      its radio is `disabled`
+- [x] "Only N left" appears at or below the low-stock threshold — verified with a variant at
+      2 against a threshold of 5
+- [x] Member price shows only for verified members — verified across three sessions: guest
+      no, signed-in non-member no, verified member yes
+
+Add to cart is a placeholder until P2-04. The button is present and correctly disabled when
+out of stock; pressing it explains where the cart is rather than doing nothing.
 
 **P2-04 · Cart.** Guest cart by cookie, cart drawer, quantity updates, merge on login.
 - [ ] Guest cart survives browser restart for 30 days

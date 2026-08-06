@@ -357,6 +357,183 @@ export async function homeShelves(memberPercent = 0) {
   };
 }
 
+// ─────────────────────────────  product detail  ─────────────────────────────
+
+export interface DetailVariant {
+  id: string;
+  sku: string;
+  name: string;
+  priceCents: Cents;
+  compareAtPriceCents: Cents | null;
+  /** The member's price for this variant, or null when the viewer is not a verified member. */
+  memberPriceCents: Cents | null;
+  stockQty: number;
+  lowStockThreshold: number;
+  weightGrams: number;
+  optionValues: Record<string, string> | null;
+}
+
+export interface ProductDetail {
+  id: string;
+  name: string;
+  slug: string;
+  brand: string | null;
+  description: string | null;
+  memberOnly: boolean;
+  category: { name: string; slug: string } | null;
+  images: { id: string; url: string; alt: string | null }[];
+  variants: DetailVariant[];
+  reviews: {
+    id: string;
+    rating: number;
+    title: string | null;
+    body: string | null;
+    authorName: string;
+    createdAt: Date;
+    verifiedPurchase: boolean;
+  }[];
+  ratingAverage: number | null;
+  ratingCount: number;
+}
+
+/**
+ * Everything the product page needs, in one query.
+ *
+ * Only active variants are returned, but out-of-stock ones are — docs/05 requires them shown
+ * and disabled rather than hidden, so a customer can see the size exists and is coming back.
+ * Only approved reviews, per docs/04.
+ */
+export async function getProductDetail(
+  slug: string,
+  memberPercent = 0
+): Promise<ProductDetail | null> {
+  const product = await db.product.findFirst({
+    where: { slug, status: "active" },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      brand: true,
+      description: true,
+      memberOnly: true,
+      category: { select: { name: true, slug: true } },
+      images: { select: { id: true, url: true, alt: true }, orderBy: { sortOrder: "asc" } },
+      variants: {
+        where: { isActive: true },
+        orderBy: { priceCents: "asc" },
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          priceCents: true,
+          compareAtPriceCents: true,
+          stockQty: true,
+          lowStockThreshold: true,
+          weightGrams: true,
+          optionValues: true,
+        },
+      },
+      reviews: {
+        where: { status: "approved" },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          rating: true,
+          title: true,
+          body: true,
+          orderId: true,
+          createdAt: true,
+          user: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  if (!product) return null;
+
+  const ratings = product.reviews.map((review) => review.rating);
+  const ratingAverage =
+    ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null;
+
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    brand: product.brand,
+    description: product.description,
+    memberOnly: product.memberOnly,
+    category: product.category,
+    images: product.images,
+    variants: product.variants.map((variant) => ({
+      id: variant.id,
+      sku: variant.sku,
+      name: variant.name,
+      priceCents: variant.priceCents,
+      compareAtPriceCents:
+        variant.compareAtPriceCents && variant.compareAtPriceCents > variant.priceCents
+          ? variant.compareAtPriceCents
+          : null,
+      // Computed server-side from the session's member status. A client that could ask for
+      // member prices would be a discount anyone can claim.
+      memberPriceCents:
+        memberPercent > 0 ? memberUnitPrice(variant.priceCents, memberPercent) : null,
+      stockQty: variant.stockQty,
+      lowStockThreshold: variant.lowStockThreshold,
+      weightGrams: variant.weightGrams,
+      optionValues: (variant.optionValues as Record<string, string> | null) ?? null,
+    })),
+    reviews: product.reviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      title: review.title,
+      body: review.body,
+      // First name only. A review page is not a place to publish customers' full names.
+      authorName: review.user.name.split(" ")[0] ?? "Customer",
+      createdAt: review.createdAt,
+      verifiedPurchase: Boolean(review.orderId),
+    })),
+    ratingAverage,
+    ratingCount: ratings.length,
+  };
+}
+
+/** Four products from the same category — docs/04. Falls back to featured when there is none. */
+export async function relatedProducts(
+  productId: string,
+  categorySlug: string | null,
+  memberPercent = 0
+): Promise<CatalogCard[]> {
+  const base: Prisma.ProductWhereInput = {
+    status: "active",
+    variants: { some: { isActive: true } },
+    id: { not: productId },
+  };
+
+  const sameCategory = categorySlug
+    ? await db.product.findMany({
+        where: { ...base, category: { slug: categorySlug } },
+        select: cardSelect,
+        take: 4,
+        orderBy: { publishedAt: "desc" },
+      })
+    : [];
+
+  if (sameCategory.length >= 4 || !categorySlug) {
+    return sameCategory.map((row) => toCard(row, memberPercent));
+  }
+
+  // Top up from featured rather than showing one lonely card.
+  const filler = await db.product.findMany({
+    where: { ...base, id: { notIn: [productId, ...sameCategory.map((p) => p.id)] } },
+    select: cardSelect,
+    take: 4 - sameCategory.length,
+    orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
+  });
+
+  return [...sameCategory, ...filler].map((row) => toCard(row, memberPercent));
+}
+
 /** The price range across the live catalog, so the filter can bound itself to reality. */
 export async function priceBounds(): Promise<{ minCents: number; maxCents: number }> {
   const result = await db.productVariant.aggregate({
