@@ -142,9 +142,13 @@ separately in the P1-08 description.
       next/image a loader and real files, so measuring before then would not reflect launch.
 
 **P2-02 · Search.** FULLTEXT search plus autocomplete.
-- [ ] Suggest returns in under 200ms with seed data
-- [ ] Partial and misspelled queries return something useful or a real empty state
-- [ ] Rate limited to 30/min
+- [x] Suggest returns in under 200ms with seed data — production build, 20 queries: median
+      33ms, max 44ms. Measured against `pnpm start`, not `pnpm dev`; the dev server's
+      on-demand compilation put one sample at 235ms and that number means nothing.
+- [x] Partial and misspelled queries return something useful or a real empty state —
+      "bara" → Barako coffee (FULLTEXT prefix), "barrako" and "cofee" → Barako coffee
+      (edit distance), "zzzzz" → empty state with a link to browse everything
+- [x] Rate limited to 30/min — 30 through, 429 on the 31st, `Retry-After: 59`
 
 **P2-03 · Product detail.** Gallery, variant picker, stock state, related products.
 - [ ] Selecting a variant updates price, SKU, stock, and image without a page reload

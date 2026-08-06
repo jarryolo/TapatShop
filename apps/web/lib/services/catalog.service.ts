@@ -3,6 +3,16 @@ import type { Prisma } from "@tapatshop/db";
 import { db } from "@/lib/db";
 import { type Cents, memberUnitPrice } from "@/lib/utils/money";
 
+import { idFilter, searchProductIds } from "./search.service";
+
+/**
+ * How many search hits can be combined with filters.
+ *
+ * Search resolves to a list of ids that then feed an `IN (...)`. Unbounded, a one-letter
+ * query would put the whole catalog in one clause, so it is capped well above any page size.
+ */
+const SEARCH_ID_CEILING = 500;
+
 /**
  * The public catalog: what a shopper sees. Read-only.
  *
@@ -44,6 +54,8 @@ export interface CatalogCard {
 export interface CatalogPage {
   data: CatalogCard[];
   meta: { page: number; limit: number; total: number; totalPages: number };
+  /** Set when a search term was corrected, so the page can say what it actually searched for. */
+  correctedTo?: string;
 }
 
 const DEFAULT_LIMIT = 24;
@@ -63,17 +75,6 @@ function publicWhere(query: CatalogQuery): Prisma.ProductWhereInput {
 
   if (query.categorySlug) {
     where.category = { slug: query.categorySlug, isActive: true };
-  }
-
-  if (query.q && query.q.trim().length > 0) {
-    const term = query.q.trim();
-    // Full-text search is P2-02. Until then a contains match over the same three columns
-    // keeps the filter honest rather than pretending search does not exist.
-    where.OR = [
-      { name: { contains: term } },
-      { brand: { contains: term } },
-      { description: { contains: term } },
-    ];
   }
 
   const priceFilter: Prisma.IntFilter = {};
@@ -163,10 +164,29 @@ export async function listCatalog(query: CatalogQuery, memberPercent = 0): Promi
   const page = Math.max(1, query.page ?? 1);
   const where = publicWhere(query);
 
+  /**
+   * A search term resolves to a set of ids first, then the normal filters apply on top.
+   *
+   * Search ranking and filtering are separate concerns: the FULLTEXT index decides what
+   * matches, and the category, price and stock filters narrow it. Trying to express both in
+   * one Prisma `where` would mean giving up relevance ordering.
+   */
+  let correctedTo: string | undefined;
+  if (query.q && query.q.trim().length > 0) {
+    const outcome = await searchProductIds(query.q, SEARCH_ID_CEILING);
+    correctedTo = outcome.correctedTo;
+    Object.assign(where, idFilter(outcome.productIds));
+
+    if (outcome.productIds.length === 0) {
+      return { data: [], meta: { page: 1, limit, total: 0, totalPages: 1 } };
+    }
+  }
+
   // Price and popularity both rank on something Prisma cannot express as an orderBy over a
   // relation aggregate, so they take the ranked path below.
   if (query.sort === "popular" || query.sort === "price_asc" || query.sort === "price_desc") {
-    return listRanked(where, query.sort, page, limit, memberPercent);
+    const ranked = await listRanked(where, query.sort, page, limit, memberPercent);
+    return { ...ranked, correctedTo };
   }
 
   const orderBy = sortToOrderBy(query.sort);
@@ -185,6 +205,7 @@ export async function listCatalog(query: CatalogQuery, memberPercent = 0): Promi
   return {
     data: rows.map((row) => toCard(row, memberPercent)),
     meta: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+    correctedTo,
   };
 }
 

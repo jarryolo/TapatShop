@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { SearchBox } from "@/components/shop/search-box";
 import { auth } from "@/lib/auth";
 import { listCategories } from "@/lib/services/catalog.service";
 
@@ -45,6 +46,10 @@ export default async function ShopLayout({ children }: { children: ReactNode }) 
               ))}
             </ul>
           </nav>
+
+          <div className="order-2 min-w-0 flex-1 md:order-none md:ml-4">
+            <SearchBox />
+          </div>
 
           <div className="ml-auto flex items-center gap-2">
             {session?.user ? (

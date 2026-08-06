@@ -49,6 +49,25 @@ export default async function ProductsPage({
         <h1 className="text-2xl font-semibold md:text-[32px] md:leading-tight">
           {query.q ? `Results for "${query.q}"` : "All products"}
         </h1>
+
+        {/* Say when the search was corrected. Silently returning results for a different
+            word than the one typed is confusing, and the customer may want the literal one. */}
+        {page.correctedTo ? (
+          <p className="mt-1 text-sm text-text-muted">
+            No exact matches. Showing results close to{" "}
+            <span className="font-semibold text-text">{page.correctedTo}</span>.
+          </p>
+        ) : null}
+
+        {query.q && page.meta.total === 0 ? (
+          <p className="mt-1 text-sm text-text-muted">
+            Nothing matched that. Try a shorter word, or{" "}
+            <a href="/products" className="font-semibold text-brand-600 hover:underline">
+              browse everything
+            </a>
+            .
+          </p>
+        ) : null}
       </header>
 
       <CatalogListing
