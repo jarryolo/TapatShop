@@ -178,6 +178,17 @@ export function CheckoutFlow({
       return;
     }
 
+    /**
+     * The coupon was taken by someone else while this checkout committed.
+     *
+     * Shown before the redirect, not after — the customer is about to see a total higher
+     * than the cart did, and hearing why on the payment page is too late to matter.
+     */
+    if (body.changes?.length) {
+      for (const change of body.changes as { message: string }[]) toast(change.message, "info");
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+
     window.location.href = body.checkoutUrl;
   }
 

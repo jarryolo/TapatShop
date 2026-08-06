@@ -370,6 +370,89 @@ describeIntegration("checkout.service", () => {
         order.subtotalCents + order.shippingCents - order.discountCents
       );
     });
+
+    it("drops a coupon claimed by someone else, and still places the order", async () => {
+      /**
+       * The claim, wired in. Another checkout took the only use between this cart applying
+       * the code and this checkout committing.
+       *
+       * Being charged full price is a surprise, but losing a finished checkout over a voucher
+       * is a worse one — so the order stands and the change is reported.
+       */
+      const variant = await makeVariant(10, 200_000);
+      const rate = await makeZone();
+      const coupon = await makeCoupon({ maxUses: 1 });
+      const cartId = await getOrCreateCart(db, { guestToken: unique("g") });
+      await addItem(db, cartId, variant.id, 1);
+      await applyCoupon(db, cartId, coupon.code, { subtotalCents: 200_000 });
+
+      // Someone else's checkout, holding the only use.
+      await db.order.create({
+        data: {
+          orderNo: unique("TS-RIVAL").toUpperCase(),
+          paymentStatus: "awaiting_payment",
+          subtotalCents: 200_000,
+          totalCents: 180_000,
+          couponCode: coupon.code,
+          shippingAddress: {},
+          customerName: "Someone Else",
+          customerEmail: "else@example.test",
+          customerPhone: "09170000000",
+          placedAt: new Date(),
+        },
+      });
+
+      const started = await startCheckout(cartId, GUEST, ADDRESS, rate.id, new Date(), db);
+      if (started.kind !== "ok") throw new Error("expected ok");
+
+      expect(started.changes.some((change) => change.kind === "coupon_invalid")).toBe(true);
+
+      const order = await db.order.findUniqueOrThrow({ where: { id: started.orderId } });
+      expect(order.couponCode).toBeNull();
+      expect(order.discountCents).toBe(0);
+      // The total is the honest one, not the discounted figure the cart last showed.
+      expect(order.totalCents).toBe(order.subtotalCents + order.shippingCents);
+    });
+
+    it("does not record a code on the order when it discounted nothing", async () => {
+      // Otherwise the order reads as a use of the coupon to the cap and to the paid webhook,
+      // and the customer burns a code they never got anything from.
+      const variant = await makeVariant(10, 200_000);
+      const rate = await makeZone();
+      const coupon = await makeCoupon();
+      const cartId = await getOrCreateCart(db, { guestToken: unique("g") });
+      await addItem(db, cartId, variant.id, 1);
+      await applyCoupon(db, cartId, coupon.code, { subtotalCents: 200_000 });
+
+      await db.coupon.update({
+        where: { id: coupon.id },
+        data: { endsAt: new Date(Date.now() - 1000) },
+      });
+
+      const started = await startCheckout(cartId, GUEST, ADDRESS, rate.id, new Date(), db);
+      if (started.kind !== "ok") throw new Error("expected ok");
+
+      const order = await db.order.findUniqueOrThrow({ where: { id: started.orderId } });
+      expect(order.couponCode).toBeNull();
+      expect(order.discountCents).toBe(0);
+    });
+
+    it("keeps the coupon when nobody else is holding it", async () => {
+      const variant = await makeVariant(10, 200_000);
+      const rate = await makeZone();
+      const coupon = await makeCoupon({ maxUses: 1 });
+      const cartId = await getOrCreateCart(db, { guestToken: unique("g") });
+      await addItem(db, cartId, variant.id, 1);
+      await applyCoupon(db, cartId, coupon.code, { subtotalCents: 200_000 });
+
+      const started = await startCheckout(cartId, GUEST, ADDRESS, rate.id, new Date(), db);
+      if (started.kind !== "ok") throw new Error("expected ok");
+
+      expect(started.changes).toHaveLength(0);
+      const order = await db.order.findUniqueOrThrow({ where: { id: started.orderId } });
+      expect(order.couponCode).toBe(coupon.code);
+      expect(order.discountCents).toBe(20_000);
+    });
   });
 
   describe("guest checkout end to end", () => {

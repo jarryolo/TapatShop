@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { type Cents, orderTotal } from "@/lib/utils/money";
 
 import { priceCart } from "./cart.service";
+import { claimCoupon, rejectionMessage } from "./coupon.service";
 import { attachToOrder, mirrorToRedis, reserve } from "./reservation.service";
 import { quote } from "./shipping.service";
 
@@ -149,7 +150,13 @@ export async function validateCheckout(
         shippingCents,
         discountCents: cart.discountCents,
       }),
-      couponCode: cart.couponCode,
+      /**
+       * Only a code that actually applied. `couponMessage` is set exactly when validation
+       * rejected it, and carrying the code through anyway would put it on the order with a
+       * zero discount — which then reads as a use of the coupon to everything downstream,
+       * including the usage cap and the paid webhook.
+       */
+      couponCode: cart.couponMessage ? null : cart.couponCode,
       shippingOptions: shipping.options as CheckoutQuote["shippingOptions"],
       changes,
     },
@@ -157,7 +164,14 @@ export async function validateCheckout(
 }
 
 export type StartCheckoutResult =
-  | { kind: "ok"; orderId: string; orderNo: string; totalCents: Cents }
+  | {
+      kind: "ok";
+      orderId: string;
+      orderNo: string;
+      totalCents: Cents;
+      /** Non-empty when the coupon was lost at the last moment. The order still stands. */
+      changes: CheckoutChange[];
+    }
   | { kind: "empty_cart" }
   | { kind: "unavailable_lines"; changes: CheckoutChange[] }
   | { kind: "no_service" }
@@ -212,6 +226,39 @@ export async function startCheckout(
 ): Promise<StartCheckoutResult> {
   const result = await client.$transaction(
     async (tx) => {
+      /**
+       * Settle the coupon before anything else in this transaction.
+       *
+       * Two reasons for it being first. It has to happen under a row lock — validateCheckout
+       * reads the coupon without one, which is right for showing a quote but cannot settle a
+       * race, so two people spending the last use of a single-use code both pass that read.
+       * And locking the coupon *before* the variants means every checkout takes its locks in
+       * the same order; the reverse would deadlock two carts holding one lock each.
+       *
+       * A lost coupon does not lose the order. Clearing it from the cart here means every
+       * price below is computed without it by the existing pricing path, rather than by
+       * patching the numbers afterwards, and the customer is told on the confirmation.
+       */
+      const couponChanges: CheckoutChange[] = [];
+      const held = await tx.cart.findUnique({
+        where: { id: cartId },
+        select: { couponCode: true },
+      });
+
+      if (held?.couponCode) {
+        const claim = await claimCoupon(
+          tx as Prisma.TransactionClient,
+          held.couponCode,
+          identity.userId ?? null,
+          now
+        );
+
+        if (claim.kind === "rejected") {
+          couponChanges.push({ kind: "coupon_invalid", message: rejectionMessage(claim) });
+          await tx.cart.update({ where: { id: cartId }, data: { couponCode: null } });
+        }
+      }
+
       const validation = await validateCheckout(tx, cartId, identity, address, { shippingRateId });
 
       if (validation.kind === "empty_cart") return { kind: "empty_cart" } as const;
@@ -309,6 +356,7 @@ export async function startCheckout(
         orderId: order.id,
         orderNo: order.orderNo,
         totalCents: order.totalCents,
+        changes: couponChanges,
         reservedLines: sellable.map((line) => ({
           variantId: line.variantId,
           quantity: line.effectiveQuantity,
@@ -326,6 +374,7 @@ export async function startCheckout(
       orderId: result.orderId,
       orderNo: result.orderNo,
       totalCents: result.totalCents,
+      changes: result.changes,
     };
   }
 

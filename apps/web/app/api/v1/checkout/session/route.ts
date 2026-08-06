@@ -136,5 +136,16 @@ export async function POST(request: Request) {
     },
   });
 
-  return ok({ orderNo: order.orderNo, checkoutUrl: session.checkoutUrl });
+  /**
+   * `changes` carries the coupon being lost at the last moment.
+   *
+   * Not an error — the order exists and the customer is going to pay for it — but they are
+   * about to see a total higher than the cart showed, and being told beforehand is the
+   * difference between a surprise and a dispute.
+   */
+  return ok({
+    orderNo: order.orderNo,
+    checkoutUrl: session.checkoutUrl,
+    ...(started.changes.length > 0 ? { changes: started.changes } : {}),
+  });
 }

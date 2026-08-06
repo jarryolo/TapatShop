@@ -335,7 +335,29 @@ which is the thing worth finding.
       exactly the ones an admin most needs to see.
 
 **P4-05 · Coupons.** CRUD plus enforcement.
-- [ ] Usage caps hold under concurrent redemption
+- [x] Usage caps hold under concurrent redemption. The cap is now settled in two places, both
+      under a `SELECT ... FOR UPDATE` on the coupon row, and both proved against real MySQL:
+      `claimCoupon` inside the checkout transaction (so two people spending the last use of a
+      single-use code resolve to one), and `redeemCoupon` on payment (so ten simultaneous
+      redemptions leave `usedCount` exact, not short). A **control test** runs the same
+      scenario without the lock and is expected to break — if it ever passes, the suite has
+      stopped testing anything. `(couponId, orderId)` is unique, so a replayed webhook counts
+      once even if invariant I6's own idempotency check is wrong.
+- [x] Admin CRUD, audited. Deleting a coupon that has been used deactivates it instead — the
+      redemption rows are the record of what it gave away and the schema cascades.
+- Three bugs found and fixed while building this, all pre-existing:
+  - `redeemCoupon` had **no caller at all**, so `usedCount` never moved and every capped code
+    was effectively unlimited. It is now wired to the payment path's contract, ready for the
+    webhook in P3-04.
+  - The checkout quote carried `couponCode` even when validation had rejected the code, so an
+    order recorded a coupon that discounted nothing — which then read as a use to both the cap
+    and the webhook.
+  - `usedCount` only moves on payment, so between checkout and the paid webhook a single-use
+    code read as unused to every simultaneous buyer. `claimCoupon` counts unpaid-but-recent
+    orders too, bounded by the same 15-minute window stock reservations get, so an abandoned
+    basket releases the code rather than burning it.
+- Deliberate: going over the cap at redemption does **not** throw. By then PayMongo has the
+  money and the discount is on the order; it returns `over_cap` so the caller can flag it.
 
 **P4-06 · Dashboard, content, settings, audit log.**
 - [ ] Dashboard figures reconcile against a manual query

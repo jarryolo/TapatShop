@@ -637,8 +637,14 @@ model CouponRedemption {
 
   coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
 
+  // One redemption per coupon per order, enforced by the database rather than by the
+  // webhook's own idempotency check. Invariant I6 says webhooks are idempotent; this is what
+  // makes a coupon still count once if that check is ever wrong.
+  @@unique([couponId, orderId])
   @@index([couponId])
   @@index([orderId])
+  // Per-user caps count by this column, and it had no index.
+  @@index([couponId, userId])
   @@map("coupon_redemptions")
 }
 
