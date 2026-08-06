@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 
+import { useCart } from "@/components/shop/cart-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/ui/price";
-import { useToast } from "@/components/ui/toast";
 import type { DetailVariant } from "@/lib/services/catalog.service";
 import { cn } from "@/lib/utils/cn";
 
@@ -24,7 +24,7 @@ export function BuyBox({
   isMember: boolean;
   onVariantChange?: (variant: DetailVariant) => void;
 }) {
-  const { toast } = useToast();
+  const { add, pending } = useCart();
 
   // Opens on the first variant that can actually be bought. Landing on a sold-out size when
   // another is available makes the whole product look unavailable.
@@ -155,10 +155,9 @@ export function BuyBox({
         <Button
           size="lg"
           disabled={outOfStock}
+          loading={pending}
           className="flex-1"
-          onClick={() =>
-            toast(`The cart arrives in P2-04. You picked ${quantity} × ${selected.name}.`, "info")
-          }
+          onClick={() => void add(selected.id, quantity)}
         >
           {outOfStock ? "Out of stock" : "Add to cart"}
         </Button>

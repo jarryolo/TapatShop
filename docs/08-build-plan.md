@@ -165,11 +165,23 @@ Add to cart is a placeholder until P2-04. The button is present and correctly di
 out of stock; pressing it explains where the cart is rather than doing nothing.
 
 **P2-04 · Cart.** Guest cart by cookie, cart drawer, quantity updates, merge on login.
-- [ ] Guest cart survives browser restart for 30 days
-- [ ] Login merges quantities correctly without duplicating lines
-- [ ] Quantities are clamped to available stock with an explicit message
-- [ ] Totals are always recomputed server-side
-- [ ] Test: item goes out of stock while in the cart → cart shows it clearly
+- [x] Guest cart survives browser restart for 30 days — `tapat_cart` is httpOnly with a
+      30-day expiry, and the expiry rolls forward on every write so an active shopper's cart
+      does not lapse mid-shop
+- [x] Login merges quantities correctly without duplicating lines — verified over real HTTP:
+      quantities sum, the unique `(cartId, variantId)` constraint is respected, and running
+      the merge twice is a no-op
+- [x] Quantities are clamped to available stock with an explicit message — asking for 5 of a
+      variant with 2 left returns "Only 2 in stock, so we added 2."
+- [x] Totals are always recomputed server-side — the cart stores variant ids and quantities
+      only. A price change between two reads shows up immediately; there is no stored total
+      to tamper with or go stale.
+- [x] Test: item goes out of stock while in the cart → cart shows it clearly — the line stays
+      listed with an `out_of_stock` issue, is charged at zero, and is excluded from the item
+      count. Checkout is blocked until it is removed.
+
+Coupons (`POST/DELETE /cart/coupon` in docs/04) are deferred to P3-02, where eligibility,
+expiry, usage caps and member-only rules are enforced together.
 
 ---
 
