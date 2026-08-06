@@ -22,6 +22,7 @@
     "db:deploy": "dotenv -e .env -- pnpm --filter @tapatshop/db exec prisma migrate deploy",
     "db:studio": "dotenv -e .env -- pnpm --filter @tapatshop/db exec prisma studio",
     "db:seed": "dotenv -e .env -- tsx packages/db/seed.ts",
+    "db:reconcile": "dotenv -e .env -- tsx packages/db/reconcile.ts",
     "db:test:prepare": "dotenv -e .env -v DATABASE_URL=mysql://tapat:password@localhost:3306/tapatshop_test -- pnpm --filter @tapatshop/db exec prisma migrate deploy",
     "db:reset": "dotenv -e .env -- pnpm --filter @tapatshop/db exec prisma migrate reset --force --skip-generate && pnpm db:seed",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",

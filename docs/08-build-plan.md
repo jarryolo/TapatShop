@@ -301,9 +301,20 @@ and prefixes `=`, `+`, `-` and `@` so a spreadsheet cannot execute a customer-su
 - [ ] Requires typed confirmation; always writes an `AuditLog`
 
 **P4-03 · Inventory.** Stock list, low-stock filter, manual adjustment, movement history.
-- [ ] Adjustment without a reason is rejected
-- [ ] Movement history shows actor, delta, reason, and running balance
-- [ ] A reconciliation command rebuilds `stockQty` from the ledger and reports drift
+- [x] Adjustment without a reason is rejected — verified live, 422. So are a zero change and
+      anything that would drive physical stock below zero.
+- [x] Movement history shows actor, delta, reason, and running balance — `balanceAfter` is
+      stored per row rather than recomputed, so the history reads correctly even paginated.
+      System movements show "System" rather than a person: a sale is not somebody's decision.
+- [x] A reconciliation command rebuilds `stockQty` from the ledger and reports drift —
+      `pnpm db:reconcile`, `--repair` to write. Proved end to end: a bare `UPDATE` behind the
+      ledger's back was detected (999 vs 29, +970), reported without changing anything,
+      exited 1 so a cron can alert, then repaired to 29 on request, and a second pass was
+      clean.
+
+The command reports by default and only writes when asked. A silent repair would hide the bug
+that caused the drift — and drift means something wrote stock outside a movement transaction,
+which is the thing worth finding.
 
 **P4-04 · Customers and members.** Profiles, order history, lifetime value, member verification.
 - [ ] Member verification is admin-only and audited
