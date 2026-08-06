@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { type AddressValue, AddressFields } from "@/components/shop/address-fields";
 import { Accordion } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -51,6 +52,14 @@ export function Gallery() {
   const [modalOpen, setModalOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [bottomSheetOpen, setBottomSheetOpen] = useState(false);
+  const [address, setAddress] = useState<AddressValue>({
+    region: "",
+    province: "",
+    city: "",
+    barangay: "",
+    street: "",
+    postalCode: "",
+  });
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 md:px-6 md:py-16">
@@ -462,6 +471,18 @@ export function Gallery() {
             />
             <Pagination current={5} total={20} hrefFor={(page) => `/dev/ui?page=${page}`} />
             <Pagination current={1} total={3} hrefFor={(page) => `/dev/ui?page=${page}`} />
+          </Card>
+        </Section>
+
+        <Section
+          title="PH address cascade"
+          note="Region → province → city → barangay. Falls back to free text where the dataset has no entries — see lib/data/ph-locations.ts."
+        >
+          <Card>
+            <AddressFields value={address} onChange={setAddress} />
+            <pre className="mt-4 overflow-x-auto rounded-[var(--radius-ctrl)] bg-page p-3 text-xs">
+              {JSON.stringify(address, null, 2)}
+            </pre>
           </Card>
         </Section>
 

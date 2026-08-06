@@ -190,9 +190,18 @@ expiry, usage caps and member-only rules are enforced together.
 Staging environment with a webhook tunnel must exist before starting.
 
 **P3-01 · Shipping rules.** Zones, rates, free-shipping threshold, PH address cascade.
-- [ ] Region → province → city → barangay cascade works with real PH data
-- [ ] Quote endpoint returns correct rates for each zone
-- [ ] Free-shipping threshold applies at exactly the boundary value
+- [~] Region → province → city → barangay cascade works with real PH data — the cascade
+      works and the data is real, but the dataset is **incomplete on purpose**. All 17
+      regions and all 82 provinces are there; cities and barangays cover NCR in full plus
+      the largest city per region. The Philippines has ~1,600 cities and ~42,000 barangays,
+      and writing those by hand would introduce errors that misroute deliveries silently.
+      **Before launch: import the PSA PSGC dataset** (https://psa.gov.ph/classification/psgc).
+      The form falls back to free text wherever the dataset is thin, so a partial import
+      cannot block a sale.
+- [x] Quote endpoint returns correct rates for each zone — verified live across all four
+      seeded zones; the seed covers every one of the 17 regions
+- [x] Free-shipping threshold applies at exactly the boundary value — ₱2,499 pays ₱80,
+      ₱2,500 is free, ₱2,501 is free
 
 **P3-02 · Checkout flow.** Three steps, server-side re-pricing, coupon application.
 - [ ] Client-supplied prices are ignored entirely — test by tampering with the payload
