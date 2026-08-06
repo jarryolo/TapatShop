@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* Design tokens land here in P1-04, mapped into the Tailwind theme with @theme.
+   Until then: no hardcoded colours in components. See docs/05-design-system.md. */

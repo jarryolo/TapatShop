@@ -108,7 +108,7 @@ webhooks otherwise. Use a tunnel (cloudflared) to receive PayMongo webhooks loca
 
 - Sentry on server and client
 - Structured JSON logs; never log full webhook payloads containing PII
-- Uptime check on `/api/health`
+- Uptime check on `/api/v1/health`
 - Nightly `mysqldump` to off-server storage, with a **restore rehearsed before launch**
 - App's MySQL user has no `DROP` privilege; migrations run as a separate user
 

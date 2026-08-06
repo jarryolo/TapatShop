@@ -29,10 +29,12 @@ key, SMS provider account, VPS, domain, Google OAuth client, Sentry DSN.
 **P1-01 · Repo scaffold.**
 Monorepo per `docs/02`. Next.js 15 + TypeScript strict + Tailwind + ESLint + Prettier +
 Vitest. Docker Compose with `mysql`, `redis`, `minio`. `.env.example` filled in.
-- [ ] `docker compose up` brings up MySQL, Redis, MinIO
-- [ ] `pnpm dev` serves a page at localhost:3000
-- [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test` all pass on an empty project
-- [ ] README documents local setup in under ten steps
+- [ ] `pnpm docker:up` brings up MySQL, Redis, MinIO — **not yet verified**, Docker is not
+      installed on the machine the scaffold was built on. The compose YAML parses and the
+      service definitions are complete; someone with Docker must confirm they boot.
+- [x] `pnpm dev` serves a page at localhost:3000, and `/api/v1/health` answers `{"status":"ok"}`
+- [x] `pnpm typecheck`, `pnpm lint`, `pnpm test` all pass on an empty project
+- [x] README documents local setup in six steps
 
 **P1-02 · Database and seed.**
 The schema is already at `packages/db/prisma/schema.prisma`. Generate the initial migration.

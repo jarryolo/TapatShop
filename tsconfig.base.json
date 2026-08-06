@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+
+    // "TypeScript strict" per docs/02. The three below are not in `strict` but catch the
+    // mistakes that actually cost us: unchecked array access, silent switch fallthrough,
+    // and accidental overrides.
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true
+  }
+}
