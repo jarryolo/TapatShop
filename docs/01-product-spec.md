@@ -49,6 +49,21 @@ A single store-wide percentage, not a per-product price. Decided in P0-01.
 
 `Product.memberOnly` is a separate feature: it controls **visibility**, not price.
 
+## Tax
+
+**No VAT.** The store is non-VAT registered. The price on the product page is the price
+charged, and an order total is exactly `subtotal + shipping - discount`.
+
+There is no `vatCents` column, no VAT setting, and no VAT line on the invoice. Do not add
+one without revisiting invariant I1, the checkout service, and the invoice template
+together — a VAT term bolted onto any one of those in isolation will silently produce totals
+that do not reconcile.
+
+**The threshold that would change this:** BIR requires VAT registration once annual gross
+sales exceed ₱3,000,000. Below that a business may register as non-VAT and pay percentage
+tax instead, which is the assumption here. If the store crosses that line, this decision has
+to be revisited before the next invoice is issued, not after.
+
 ## Customer-facing scope
 
 **Browse and discover**
@@ -87,7 +102,7 @@ per-SKU movement history; restock alerts.
 
 **Content** — homepage banners, featured collections, announcement bar.
 
-**Settings** — store info, shipping zones and rates, VAT config, PayMongo keys, staff accounts.
+**Settings** — store info, shipping zones and rates, member discount, PayMongo keys, staff accounts.
 
 **Audit log** — filterable record of every admin mutation.
 
@@ -120,5 +135,6 @@ Multi-currency. International shipping. Gift cards. Live chat. Loyalty points.
 
 - Data Privacy Act (RA 10173): consent checkbox at registration, privacy policy page,
   account deletion request flow, no unnecessary PII retention.
-- BIR: printable invoice with store TIN, VAT breakdown, and sequential invoice number.
+- BIR: printable invoice with store TIN and a sequential invoice number. **No VAT
+  breakdown** — see "Tax" below.
 - Terms of service and a returns/refunds policy page are required before launch.

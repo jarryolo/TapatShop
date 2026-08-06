@@ -144,25 +144,24 @@ export function sumCents(amounts: readonly Cents[]): Cents {
 
 /**
  * The order total, as invariant I1 defines it:
- *   total == subtotal + shipping + vat - discount
+ *   total == subtotal + shipping - discount
  *
- * Computing it in one place means a route handler cannot quietly invent a different
- * arrangement of the same four numbers.
+ * No VAT term. The store is non-VAT registered and the price shown is the price paid —
+ * docs/01-product-spec.md. Computing the total in one place means a route handler cannot
+ * quietly invent a different arrangement of the same three numbers.
  */
 export function orderTotal(parts: {
   subtotalCents: Cents;
   shippingCents?: Cents;
-  vatCents?: Cents;
   discountCents?: Cents;
 }): Cents {
-  const { subtotalCents, shippingCents = 0, vatCents = 0, discountCents = 0 } = parts;
+  const { subtotalCents, shippingCents = 0, discountCents = 0 } = parts;
 
   assertCents(subtotalCents, "subtotalCents");
   assertCents(shippingCents, "shippingCents");
-  assertCents(vatCents, "vatCents");
   assertCents(discountCents, "discountCents");
 
-  const total = subtotalCents + shippingCents + vatCents - discountCents;
+  const total = subtotalCents + shippingCents - discountCents;
   assertCents(total, "totalCents");
   return total;
 }

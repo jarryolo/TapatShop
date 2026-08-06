@@ -128,8 +128,6 @@ async function main() {
       { key: "member_discount_percent", value: MEMBER_DISCOUNT_PERCENT },
       { key: "store_name", value: "TapatShop" },
       { key: "store_tin", value: "000-000-000-000" },
-      { key: "vat_percent", value: 12 },
-      { key: "vat_inclusive", value: true },
       { key: "low_stock_default_threshold", value: 5 },
       { key: "absorb_payment_fees", value: true },
     ],
@@ -932,10 +930,8 @@ async function main() {
     const discountCents =
       seed.discountCents ?? (seed.couponCode === "WELCOME10" ? Math.round(subtotalCents * 0.1) : 0);
 
-    // vatCents is 0 here: prices are VAT-inclusive, so adding VAT again would break I1.
-    // The BIR breakdown is derived at invoice render. Flagged for P3-02.
-    const vatCents = 0;
-    const totalCents = subtotalCents + seed.shippingCents + vatCents - discountCents; // I1
+    // No VAT term. The store is non-VAT registered — docs/01-product-spec.md.
+    const totalCents = subtotalCents + seed.shippingCents - discountCents; // I1
 
     const isPaid = ["paid", "partially_refunded", "refunded"].includes(seed.paymentStatus);
 
@@ -950,7 +946,6 @@ async function main() {
         subtotalCents,
         shippingCents: seed.shippingCents,
         discountCents,
-        vatCents,
         totalCents,
         refundedCents: seed.refund?.amountCents ?? 0,
         couponCode: seed.couponCode ?? null,
@@ -1275,7 +1270,7 @@ async function verify() {
     if (subtotal !== o.subtotalCents)
       problems.push(`I3 ${o.orderNo}: subtotal ${o.subtotalCents} != ${subtotal}`);
 
-    const total = o.subtotalCents + o.shippingCents + o.vatCents - o.discountCents;
+    const total = o.subtotalCents + o.shippingCents - o.discountCents;
     if (total !== o.totalCents) problems.push(`I1 ${o.orderNo}: total ${o.totalCents} != ${total}`);
 
     for (const i of o.items) {

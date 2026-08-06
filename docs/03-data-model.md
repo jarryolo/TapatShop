@@ -39,7 +39,7 @@ These cannot be expressed in the schema, so they belong in `lib/services/` and i
 
 | # | Invariant |
 |---|---|
-| I1 | `Order.totalCents == subtotalCents + shippingCents + vatCents - discountCents` |
+| I1 | `Order.totalCents == subtotalCents + shippingCents - discountCents` |
 | I2 | `OrderItem.lineTotalCents == unitPriceCents * quantity` |
 | I3 | `Order.subtotalCents == sum(items.lineTotalCents)` |
 | I4 | `ProductVariant.stockQty == sum(movements.delta)` for that variant |

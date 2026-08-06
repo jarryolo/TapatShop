@@ -352,12 +352,14 @@ model Order {
   paymentStatus     PaymentStatus     @default(unpaid)
   fulfillmentStatus FulfillmentStatus @default(unfulfilled)
 
-  subtotalCents    Int
-  shippingCents    Int @default(0)
-  discountCents    Int @default(0)
-  vatCents         Int @default(0)
-  totalCents       Int
-  refundedCents    Int @default(0)
+  // No VAT column by design. The store is non-VAT registered and prices are the price —
+  // see docs/01-product-spec.md. A permanently-zero column invites someone to start
+  // populating it and quietly break invariant I1.
+  subtotalCents Int
+  shippingCents Int @default(0)
+  discountCents Int @default(0)
+  totalCents    Int
+  refundedCents Int @default(0)
 
   couponCode String?
 

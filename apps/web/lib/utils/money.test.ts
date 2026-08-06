@@ -194,10 +194,13 @@ describe("orderTotal", () => {
       orderTotal({
         subtotalCents: 197000,
         shippingCents: 17500,
-        vatCents: 0,
         discountCents: 19700,
       })
     ).toBe(194800);
+  });
+
+  it("has no VAT term — the price shown is the price paid", () => {
+    expect(orderTotal({ subtotalCents: 100000, shippingCents: 8000 })).toBe(108000);
   });
 
   it("defaults the optional parts to zero", () => {
