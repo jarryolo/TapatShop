@@ -37,6 +37,14 @@ describe("canAccess", () => {
     expect(canAccess("staff", "/admin/audit-logs")).toBe(false);
   });
 
+  it("keeps staff out of account recovery, including a single request", () => {
+    // Approving one of these sends a link that moves an account to a different inbox. Staff
+    // may open a customer, but not decide who that customer is.
+    expect(canAccess("staff", "/admin/recovery")).toBe(false);
+    expect(canAccess("staff", "/admin/recovery/req_123")).toBe(false);
+    expect(canAccess("admin", "/admin/recovery/req_123")).toBe(true);
+  });
+
   it("uses the longest prefix, so settings subpages stay admin-only", () => {
     // Both /admin and /admin/settings prefix-match this path. Picking the shorter one would
     // make every settings subpage staff-visible.

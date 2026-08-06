@@ -29,7 +29,14 @@ export type AuditAction =
   | "order.refund"
   | "inventory.adjust"
   | "user.verify_member"
+  | "user.revoke_member"
   | "user.role_change"
+  // Distinct from user.role_change on purpose. "Who approved account recoveries, and on what
+  // evidence" is a question someone will ask after an incident, and folding it into a generic
+  // action makes it unanswerable without reading every row's payload.
+  | "recovery.approve"
+  | "recovery.reject"
+  | "recovery.confirm"
   | "setting.update";
 
 export interface AuditEntry {

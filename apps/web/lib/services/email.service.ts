@@ -14,6 +14,8 @@ export type EmailTemplate =
   | "provider-linked"
   | "sign-in-method-reminder"
   | "email-changed"
+  // Carries the confirmation link for an admin-approved recovery. Never a password.
+  | "account-recovery-approved"
   | "order-confirmation"
   | "order-shipped"
   | "order-delivered"

@@ -30,6 +30,14 @@ export const LIMITS = {
   login: { limit: 5, windowSeconds: 60 },
   register: { limit: 5, windowSeconds: 60 },
   passwordReset: { limit: 3, windowSeconds: 3600 },
+  /**
+   * Its own bucket rather than sharing passwordReset's.
+   *
+   * Both are keyed per IP, and everyone in one office or behind one carrier NAT shares an
+   * IP. Sharing a bucket would mean a colleague's three password resets locked out the one
+   * person who has actually lost their account — the case with no other way in.
+   */
+  accountRecovery: { limit: 3, windowSeconds: 3600 },
   otpRequest: { limit: 3, windowSeconds: 3600 },
   otpVerify: { limit: 3, windowSeconds: 900 },
   orderTracking: { limit: 5, windowSeconds: 60 },

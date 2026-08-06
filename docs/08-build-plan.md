@@ -317,8 +317,22 @@ that caused the drift — and drift means something wrote stock outside a moveme
 which is the thing worth finding.
 
 **P4-04 · Customers and members.** Profiles, order history, lifetime value, member verification.
-- [ ] Member verification is admin-only and audited
-- [ ] Admin-assisted recovery flow works per `docs/07` and never exposes a password
+- [x] Member verification is admin-only and audited — `requireAdmin`, not `requireStaff`, because
+      member status grants a store-wide discount and is therefore a money decision. Verified
+      over real HTTP: staff get 403 on both POST and DELETE, the staff view renders "Only an
+      admin can change member status" and no withdraw button, and every change writes an
+      audit row (`user.verify_member` / `user.revoke_member`) with actor and IP.
+- [~] Admin-assisted recovery works per `docs/07` and never exposes a password. Walked end to
+      end against the dev server: public form → `4 of 4 match` evidence page → admin approval
+      (staff refused) → confirmation link emailed to the **new** address only → customer
+      confirms → email moved, `sessionsRevokedAt` set, link burned on replay. The password
+      hash was byte-identical before and after, and `getCustomer` never selects it at all.
+      Audit rows credit approval to the admin and confirmation to the customer, since two
+      different people acted. **Two gaps:** `docs/07` also wants an SMS to the verified phone
+      on step 4 and there is no SMS transport yet; and the review screen lives at
+      `/admin/recovery/:id` rather than the doc's `/admin/customers/:id/recovery`, because a
+      request that matches no account has no customer to hang off — the unmatched ones are
+      exactly the ones an admin most needs to see.
 
 **P4-05 · Coupons.** CRUD plus enforcement.
 - [ ] Usage caps hold under concurrent redemption

@@ -26,6 +26,8 @@ export const ADMIN_NAV: readonly NavItem[] = [
   { label: "Products", href: "/admin/products", roles: STAFF_AND_ADMIN },
   { label: "Inventory", href: "/admin/inventory", roles: STAFF_AND_ADMIN },
   { label: "Customers", href: "/admin/customers", roles: STAFF_AND_ADMIN },
+  // Admin-only: approving one of these moves an account to a different person's inbox.
+  { label: "Account recovery", href: "/admin/recovery", roles: ADMIN_ONLY },
   { label: "Coupons", href: "/admin/coupons", roles: STAFF_AND_ADMIN },
   { label: "Content", href: "/admin/content", roles: STAFF_AND_ADMIN },
   { label: "Settings", href: "/admin/settings", roles: ADMIN_ONLY },

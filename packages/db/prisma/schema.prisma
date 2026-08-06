@@ -87,6 +87,13 @@ enum TokenPurpose {
   password_reset
 }
 
+enum RecoveryStatus {
+  pending
+  approved
+  confirmed
+  rejected
+}
+
 // ─────────────────────────────  identity  ─────────────────────────────
 
 model User {
@@ -128,6 +135,8 @@ model User {
   notifications  Notification[]
   auditLogs      AuditLog[]        @relation("AuditActor")
   movements      InventoryMovement[]
+  recoveryRequests AccountRecoveryRequest[] @relation("RecoverySubject")
+  recoveryReviews  AccountRecoveryRequest[] @relation("RecoveryReviewer")
 
   @@index([role])
   @@index([createdAt])
@@ -184,6 +193,51 @@ model OtpCode {
 
   @@index([userId, purpose])
   @@map("otp_codes")
+}
+
+/**
+ * Admin-assisted account recovery — docs/07 route 3, the last resort.
+ *
+ * For the customer who has lost the Gmail account their login depends on. The whole design
+ * is a deliberate paper trail: the customer states what they can prove, an admin checks it
+ * against real order history, and the only thing an approval does is send a confirmation
+ * link to the NEW address. No admin ever sets or sees a password.
+ */
+model AccountRecoveryRequest {
+  id     String  @id @default(cuid())
+  // Set once an admin matches the claim to an account. Null while unmatched.
+  userId String?
+
+  // What the customer claims, in their words. Never trusted, only compared.
+  claimedName     String
+  claimedEmail    String?
+  claimedMemberNo String?
+  claimedOrderNo  String?
+  claimedAddress  String? @db.Text
+
+  /** Where they want their login moved to. Only ever written after an admin approves. */
+  newEmail String
+
+  status     RecoveryStatus @default(pending)
+  reviewNote String?        @db.Text
+
+  // The confirmation link. Hashed, like every other token in this schema.
+  tokenHash String?   @unique
+  expiresAt DateTime?
+
+  reviewedById String?
+  reviewedAt   DateTime?
+  confirmedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User? @relation("RecoverySubject", fields: [userId], references: [id], onDelete: SetNull)
+  reviewer User? @relation("RecoveryReviewer", fields: [reviewedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("account_recovery_requests")
 }
 
 model Address {

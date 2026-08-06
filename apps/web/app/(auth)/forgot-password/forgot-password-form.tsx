@@ -64,6 +64,14 @@ export function ForgotPasswordForm() {
         Send reset link
       </Button>
 
+      {/* The escape hatch for the case this whole flow assumes away: they cannot open it. */}
+      <Link
+        href="/recover-account"
+        className="self-center text-[13px] text-text-muted hover:underline"
+      >
+        I can no longer open that email
+      </Link>
+
       <Link
         href="/signin"
         className="self-center text-[13px] font-semibold text-brand-600 hover:underline"
