@@ -1,22 +1,14 @@
-import type { Role } from "@tapatshop/shared";
-
 import type { FulfillmentStatus, OrderStatus, PaymentStatus } from "@/components/admin/status-pill";
 
 /**
- * TEMPORARY. Delete this file when P1-05 lands.
+ * TEMPORARY display data for the dashboard and orders table.
  *
- * The admin shell was built while the database was unavailable, so these stand in for real
- * queries. The figures mirror packages/db/seed.ts so the shell looks the same once it is
- * reading live data.
+ * The role fixture is gone — P1-05 wired the real session, and the admin shell now reads it.
+ * These rows remain because the admin *queries* belong to P4-01 and P4-06; they mirror
+ * packages/db/seed.ts so the pages look the same once they read live data.
  *
  * Nothing outside app/admin may import this.
  */
-
-/**
- * The signed-in role. Hardcoded until Auth.js provides a session in P1-05, at which point
- * this becomes `(await auth()).user.role` and the middleware gate goes in.
- */
-export const CURRENT_ROLE: Role = "admin";
 
 export interface AdminOrderRow extends Record<string, unknown> {
   orderNo: string;

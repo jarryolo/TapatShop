@@ -23,6 +23,11 @@ CREATE DATABASE IF NOT EXISTS tapatshop_shadow
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_0900_ai_ci;
 
+-- Integration tests get their own database so a test run cannot wipe development data.
+CREATE DATABASE IF NOT EXISTS tapatshop_test
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_ai_ci;
+
 CREATE USER IF NOT EXISTS 'tapat'@'localhost' IDENTIFIED BY 'password';
 CREATE USER IF NOT EXISTS 'tapat'@'%' IDENTIFIED BY 'password';
 
@@ -32,6 +37,8 @@ GRANT ALL PRIVILEGES ON tapatshop.* TO 'tapat'@'localhost';
 GRANT ALL PRIVILEGES ON tapatshop.* TO 'tapat'@'%';
 GRANT ALL PRIVILEGES ON tapatshop_shadow.* TO 'tapat'@'localhost';
 GRANT ALL PRIVILEGES ON tapatshop_shadow.* TO 'tapat'@'%';
+GRANT ALL PRIVILEGES ON tapatshop_test.* TO 'tapat'@'localhost';
+GRANT ALL PRIVILEGES ON tapatshop_test.* TO 'tapat'@'%';
 
 FLUSH PRIVILEGES;
 

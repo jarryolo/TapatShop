@@ -70,12 +70,26 @@ Tokens into `globals.css` and the Tailwind theme. Build every component in `docs
 **P1-05 · Auth.**
 Auth.js with credentials + Google per `docs/07`. Registration, login, email verification,
 forgot/reset password, account linking rules, middleware route protection.
-- [ ] Google-only account attempting password login gets the correct guidance, not "wrong password"
-- [ ] Same verified email across providers auto-links; unverified does not
-- [ ] Forgot-password returns an identical response for existing and non-existing emails
-- [ ] Reset tokens are hashed, single-use, and expire in 30 minutes
-- [ ] `/admin` redirects non-admins; every admin route handler re-checks role server-side
-- [ ] Rate limits enforced on login, register, and reset
+- [x] Google-only account attempting password login gets the correct guidance, not "wrong password"
+- [x] Same verified email across providers auto-links; unverified does not
+- [x] Forgot-password returns an identical response for existing and non-existing emails —
+      verified live: same status and same body byte for byte
+- [x] Reset tokens are hashed, single-use, and expire in 30 minutes
+- [x] `/admin` redirects non-admins; every admin route handler re-checks role server-side —
+      verified live for admin, staff, customer, and anonymous
+- [x] Rate limits enforced on login, register, and reset
+
+Two things landed alongside, both needed to make the above true:
+
+- A `purpose` column on the token table. Verification and reset tokens shared one table, so a
+  24-hour verification link doubled as a password reset. Migration `token_purpose`.
+- Rate limits are keyed on IP **and** identifier together, per docs/04's "per email + IP",
+  with a separate looser per-IP ceiling. A bare per-IP limit of 5 locks out everyone behind
+  carrier-grade NAT, which is a large share of PH traffic.
+
+Deferred, and not claimed: phone OTP recovery, admin-assisted recovery
+(`/admin/customers/:id/recovery`), recovery email, and admin TOTP. They are docs/07 items but
+belong with P4-04 and P5-03, where the admin customer view exists to host them.
 
 **P1-06 · Media pipeline.**
 Presigned S3 uploads, 1:1 auto-crop, WebP conversion, four responsive widths.

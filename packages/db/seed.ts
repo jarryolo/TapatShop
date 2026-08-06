@@ -14,14 +14,15 @@
  * Re-runnable: wipes every table first, in foreign-key order.
  */
 
-import bcrypt from "bcryptjs";
+import { hash } from "@node-rs/argon2";
 
 import { PrismaClient } from "./generated/client/index.js";
 
 const db = new PrismaClient();
 
-/** Dev-only. Real password rules live in docs/07; P1-05 owns the hashing decision. */
+/** Dev-only. Argon2id, matching apps/web/lib/auth/password.ts so seeded logins work. */
 const DEV_PASSWORD = "tapatshop123";
+const ARGON2_OPTIONS = { memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 const MEMBER_DISCOUNT_PERCENT = 10;
 
 /**
@@ -120,7 +121,7 @@ async function main() {
   console.warn("Wiping existing data...");
   await wipe();
 
-  const passwordHash = bcrypt.hashSync(DEV_PASSWORD, 12);
+  const passwordHash = await hash(DEV_PASSWORD, ARGON2_OPTIONS);
 
   // ── settings ──────────────────────────────────────────────────────────────
   await db.setting.createMany({

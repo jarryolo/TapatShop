@@ -79,6 +79,14 @@ enum OtpPurpose {
   phone_verification
 }
 
+// One token table serves both flows, so each row must say which flow it belongs to.
+// Without this, a 24-hour email verification link — the kind that gets forwarded, logged,
+// and left sitting in an inbox — would also work as a password reset token.
+enum TokenPurpose {
+  email_verification
+  password_reset
+}
+
 // ─────────────────────────────  identity  ─────────────────────────────
 
 model User {
@@ -100,6 +108,11 @@ model User {
   privacyAgreedAt DateTime?
   lastLoginAt    DateTime?
   disabledAt     DateTime?
+
+  // Sessions are JWTs, so there is nothing server-side to delete when we need to revoke one.
+  // Instead every token carries its issue time and is rejected if issued before this stamp.
+  // Set on password reset and on email change, per docs/07-auth-and-recovery.md.
+  sessionsRevokedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -140,17 +153,19 @@ model Account {
   @@map("accounts")
 }
 
+// Single-use tokens for email verification and password reset. Only the hash is stored.
 model PasswordResetToken {
-  id        String    @id @default(cuid())
+  id        String       @id @default(cuid())
   userId    String
-  tokenHash String    @unique
+  tokenHash String       @unique
+  purpose   TokenPurpose @default(password_reset)
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  createdAt DateTime     @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, purpose])
   @@map("password_reset_tokens")
 }
 
