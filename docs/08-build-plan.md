@@ -10,9 +10,14 @@ Each ticket has acceptance criteria. A ticket is not done until every box is tru
 
 ## Phase 0 — Decisions (no code)
 
-**P0-01 · Confirm open questions.** Answer the three items in `README.md`: single store vs
-marketplace, cash on delivery, member pricing rules. Record the answers in this file.
-*Blocks everything.*
+**P0-01 · Confirm open questions.** ✅ **Done, 2026-08-06.**
+
+1. **Single store.** One catalog, one admin team, one PayMongo account. No vendor role.
+2. **No cash on delivery in v1.** PayMongo prepaid only. Out of scope, revisit post-launch.
+3. **Member pricing is a store-wide percentage** applied to every product for verified
+   members, held in the `member_discount_percent` setting. Rules and rounding in
+   `docs/01-product-spec.md`. `ProductVariant.memberPriceCents` was removed from the schema
+   as a result — there is exactly one place member price is computed.
 
 **P0-02 · Accounts and access.** PayMongo test + live keys, MinIO or R2 credentials, Resend
 key, SMS provider account, VPS, domain, Google OAuth client, Sentry DSN.
@@ -41,6 +46,8 @@ Write `seed.ts` per `docs/03`.
 `lib/utils/money.ts` and `format.ts`. Centavo arithmetic, PHP formatting, Asia/Manila dates.
 - [ ] `formatPeso(123450)` → `₱1,234.50`
 - [ ] Percentage discounts round consistently and never produce fractional centavos
+- [ ] `memberPrice(priceCents, percent)` rounds once per unit per `docs/01`, so
+      `lineTotal == memberUnitPrice * qty` holds exactly
 - [ ] Unit tests cover zero, negative, and large values
 
 **P1-04 · Design system primitives.**
@@ -120,6 +127,8 @@ Staging environment with a webhook tunnel must exist before starting.
 - [ ] Client-supplied prices are ignored entirely — test by tampering with the payload
 - [ ] Price or stock changes since the cart page are surfaced before payment, not after
 - [ ] Coupon eligibility, expiry, usage caps, and member-only rules all enforced server-side
+- [ ] Member discount applied server-side at the unit level, then the coupon at the subtotal
+      level; a member with an unverified email gets list price
 - [ ] Guest checkout works end to end
 
 **P3-03 · Stock reservation.** Per `docs/03`, with `FOR UPDATE` locking and Redis TTL.

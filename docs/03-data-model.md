@@ -47,6 +47,7 @@ These cannot be expressed in the schema, so they belong in `lib/services/` and i
 | I6 | `Order.refundedCents <= totalCents` |
 | I7 | An order may only be `paymentStatus = paid` if a `Payment` row with `status = paid` exists |
 | I8 | Every `paid` transition writes an `OrderEvent` and, for admin actions, an `AuditLog` |
+| I9 | A verified member's `OrderItem.unitPriceCents` is the member price itself, never the list price with a compensating `discountCents` |
 
 ## Order state machine
 
@@ -110,3 +111,8 @@ verified member), four categories, twelve products with realistic PH pricing and
 variants, four shipping zones with rates, two coupons, and six orders spread across every
 status combination. The admin dashboard cannot be built or reviewed against an empty
 database.
+
+It must also seed the `settings` rows the app reads at runtime, including
+`member_discount_percent`. Seed it non-zero so member pricing is visible during review, and
+make at least one of the six seeded orders a member order — that is the only way the
+per-unit rounding in `docs/01` gets exercised before production.

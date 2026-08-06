@@ -29,14 +29,13 @@ Do not ask for a whole phase in one go. One ticket, one review, one commit.
 | `docs/08-build-plan.md` | Sequenced tickets with acceptance criteria. **Start here.** |
 | `.env.example` | Every environment variable, documented. |
 
-## Open decisions
+## Decisions (P0-01, resolved 2026-08-06)
 
-These must be answered before P1 starts. They change the schema.
+These were the three open questions. They are settled; the docs and schema reflect them.
 
-1. **Single store or member marketplace?** This bundle assumes single store — the
-   brotherhood operates one catalog and one PayMongo account. A marketplace needs a
-   vendor role, per-vendor payouts, and split settlement.
-2. **Cash on delivery?** Common in PH. Not in scope here. Adding it later means a second
-   order state machine and a COD-abandonment policy.
-3. **Member-only pricing?** Schema supports it (`users.member_no`, `products.member_price_cents`)
-   but the business rules are unspecified.
+1. **Single store.** The brotherhood operates one catalog and one PayMongo account. No
+   vendor role, no per-vendor payouts, no split settlement.
+2. **No cash on delivery in v1.** PayMongo prepaid only. Revisit after launch — it means a
+   second order state machine, courier remittance reconciliation, and an abandonment policy.
+3. **Member pricing is a store-wide percentage.** One configurable discount applies to every
+   product for verified members. Rules in `docs/01-product-spec.md`.

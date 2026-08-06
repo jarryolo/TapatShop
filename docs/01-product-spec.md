@@ -21,6 +21,34 @@ no dark patterns, no fake urgency, no manipulative countdown timers.
 
 Roles are a single enum on `users`. Member status is a separate verified flag, not a role.
 
+## Member pricing
+
+A single store-wide percentage, not a per-product price. Decided in P0-01.
+
+- The rate lives in the `member_discount_percent` setting — an integer 0–100, admin-editable
+  under settings. It is never hardcoded. Setting it to `0` disables member pricing entirely
+  without any code change.
+- It applies to every active product, on top of whatever the variant's current `priceCents`
+  is. If a product is already discounted against its `compareAtPrice`, the member percentage
+  comes off the current price, not the compare-at price.
+- **Computed per unit, then rounded**:
+  `memberUnitPriceCents = priceCents - round(priceCents * percent / 100)`.
+  Per unit and rounded once, so invariant I2 (`lineTotalCents == unitPriceCents * quantity`)
+  still holds exactly. Never compute the discount on a line total or a subtotal.
+- At checkout the member price becomes the `OrderItem.unitPriceCents` outright. It is **not**
+  a `discountCents` line — that field is for coupons only. This keeps a member's invoice
+  readable and keeps the two discount mechanisms from fighting over rounding.
+- **Stacking order:** member price first at the unit level, then a coupon at the subtotal
+  level. A `membersOnly` coupon therefore stacks on top of member pricing by design.
+- **Eligibility requires both** `memberVerifiedAt` and `emailVerifiedAt` to be set, per
+  `docs/07`. An unverified email means no member price, even with a member number.
+- Applied server-side at checkout, always. The displayed price is a convenience; the
+  authoritative one is recomputed from the database at `POST /checkout/session`.
+- Guests and non-members never see member pricing — not struck through, not "you'd save",
+  nothing. That would be the kind of pressure the store is meant to avoid.
+
+`Product.memberOnly` is a separate feature: it controls **visibility**, not price.
+
 ## Customer-facing scope
 
 **Browse and discover**

@@ -261,9 +261,10 @@ model ProductVariant {
 
   optionValues Json? // { size: "L", color: "Navy" }
 
+  // Member pricing is a store-wide percentage (the `member_discount_percent` setting),
+  // not a per-variant price. See docs/01-product-spec.md. Deliberately no memberPriceCents.
   priceCents          Int
   compareAtPriceCents Int?
-  memberPriceCents    Int?
   costCents           Int?
 
   stockQty           Int @default(0)
