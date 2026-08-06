@@ -3,6 +3,7 @@ import type { Prisma } from "@tapatshop/db";
 import { db } from "@/lib/db";
 import { type Cents, memberUnitPrice } from "@/lib/utils/money";
 
+import { liveWhere } from "./content.service";
 import { idFilter, searchProductIds } from "./search.service";
 
 /**
@@ -343,8 +344,10 @@ export async function homeShelves(memberPercent = 0) {
       orderBy: [{ publishedAt: "desc" }, { id: "asc" }],
       take: 8,
     }),
+    // liveWhere, not just isActive: a banner scheduled for December must not appear in
+    // October, and one whose sale ended last week must stop on its own.
     db.banner.findMany({
-      where: { isActive: true, placement: "home_hero" },
+      where: liveWhere(new Date(), "home_hero"),
       orderBy: { sortOrder: "asc" },
       take: 1,
     }),

@@ -5,7 +5,13 @@ import { FulfillmentStatusPill, PaymentStatusPill } from "@/components/admin/sta
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
-import { manilaDateKey } from "@/lib/utils/format";
+import {
+  awaitingActionSample,
+  dashboardFigures,
+  lowStockSample,
+  recentOrders,
+  topProductsThisWeek,
+} from "@/lib/services/dashboard.service";
 import { formatPeso } from "@/lib/utils/money";
 
 export const dynamic = "force-dynamic";
@@ -13,76 +19,20 @@ export const dynamic = "force-dynamic";
 /**
  * The admin dashboard, on live data.
  *
- * "Today" is the Manila calendar day, not the UTC one. An order placed at 7am Manila is
- * still yesterday in UTC, and a dashboard that misses eight hours of orders every morning
- * would be worse than no dashboard.
+ * Every number comes from dashboard.service, where it is counted rather than inferred from
+ * the length of the list beside it. The lists here are samples of at most eight rows; the
+ * counts are the real totals, and the two are deliberately separate.
  */
-async function todayRange(): Promise<{ start: Date; end: Date }> {
-  const key = manilaDateKey(new Date());
-  // Manila is UTC+8 with no daylight saving, so the offset is a constant.
-  const start = new Date(`${key}T00:00:00+08:00`);
-  const end = new Date(`${key}T23:59:59.999+08:00`);
-  return { start, end };
-}
-
 export default async function AdminDashboardPage() {
-  const { start, end } = await todayRange();
+  const now = new Date();
 
-  const [salesToday, ordersToday, awaitingAction, lowStock, recent] = await Promise.all([
-    // Paid orders only — an unpaid order is not revenue.
-    db.order.aggregate({
-      where: {
-        paidAt: { gte: start, lte: end },
-        paymentStatus: { in: ["paid", "partially_refunded"] },
-      },
-      _sum: { totalCents: true },
-      _count: true,
-    }),
-    db.order.count({ where: { createdAt: { gte: start, lte: end } } }),
-    db.order.findMany({
-      where: {
-        paymentStatus: "paid",
-        fulfillmentStatus: "unfulfilled",
-        status: { not: "cancelled" },
-      },
-      orderBy: { createdAt: "asc" },
-      take: 8,
-      select: {
-        id: true,
-        orderNo: true,
-        customerName: true,
-        totalCents: true,
-        fulfillmentStatus: true,
-        createdAt: true,
-      },
-    }),
-    db.productVariant.findMany({
-      where: { isActive: true, product: { status: "active" } },
-      orderBy: { stockQty: "asc" },
-      take: 8,
-      select: {
-        id: true,
-        sku: true,
-        name: true,
-        stockQty: true,
-        lowStockThreshold: true,
-        product: { select: { name: true, id: true } },
-      },
-    }),
-    db.order.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      select: {
-        id: true,
-        orderNo: true,
-        customerName: true,
-        totalCents: true,
-        paymentStatus: true,
-      },
-    }),
+  const [figures, awaitingAction, lowStockRows, topProducts, recent] = await Promise.all([
+    dashboardFigures(db, now),
+    awaitingActionSample(db),
+    lowStockSample(db),
+    topProductsThisWeek(db, now),
+    recentOrders(db),
   ]);
-
-  const lowStockRows = lowStock.filter((v) => v.stockQty <= v.lowStockThreshold);
 
   return (
     <div className="flex flex-col gap-8">
@@ -94,21 +44,29 @@ export default async function AdminDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Sales today"
-          value={formatPeso(salesToday._sum.totalCents ?? 0)}
-          hint={`${salesToday._count} paid ${salesToday._count === 1 ? "order" : "orders"}`}
+          value={formatPeso(figures.salesTodayCents)}
+          hint={`${figures.paidOrdersToday} paid ${figures.paidOrdersToday === 1 ? "order" : "orders"}, less refunds`}
         />
-        <StatCard label="Orders today" value={String(ordersToday)} hint="Placed, paid or not" />
+        <StatCard
+          label="Orders today"
+          value={String(figures.ordersPlacedToday)}
+          hint="Placed, paid or not"
+        />
         <StatCard
           label="Awaiting action"
-          value={String(awaitingAction.length)}
+          value={String(figures.awaitingActionCount)}
           hint="Paid but not yet packed"
-          tone={awaitingAction.length > 0 ? "attention" : "default"}
+          tone={figures.awaitingActionCount > 0 ? "attention" : "default"}
         />
         <StatCard
           label="Low stock"
-          value={String(lowStockRows.length)}
-          hint="At or below threshold"
-          tone={lowStockRows.length > 0 ? "attention" : "default"}
+          value={String(figures.lowStockCount)}
+          hint={
+            figures.outOfStockCount > 0
+              ? `${figures.outOfStockCount} out of stock`
+              : "At or below threshold"
+          }
+          tone={figures.lowStockCount > 0 ? "attention" : "default"}
         />
       </div>
 
@@ -120,7 +78,11 @@ export default async function AdminDashboardPage() {
               href="/admin/orders?paymentStatus=paid&fulfillmentStatus=unfulfilled"
               className="text-[13px] font-semibold text-brand-600 hover:underline"
             >
-              All orders
+              {/* Says so when this is a sample. A truncated list with no hint reads as the
+                  whole queue, which is how a backlog goes unnoticed. */}
+              {figures.awaitingActionCount > awaitingAction.length
+                ? `See all ${figures.awaitingActionCount}`
+                : "All orders"}
             </Link>
           </CardHeader>
 
@@ -150,10 +112,12 @@ export default async function AdminDashboardPage() {
           <CardHeader>
             <CardTitle>Low stock</CardTitle>
             <Link
-              href="/admin/inventory"
+              href="/admin/inventory?lowStock=true"
               className="text-[13px] font-semibold text-brand-600 hover:underline"
             >
-              Inventory
+              {figures.lowStockCount > lowStockRows.length
+                ? `See all ${figures.lowStockCount}`
+                : "Inventory"}
             </Link>
           </CardHeader>
 
@@ -181,6 +145,39 @@ export default async function AdminDashboardPage() {
           )}
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Top products this week</CardTitle>
+          <span className="text-[13px] text-text-muted">By units sold on paid orders</span>
+        </CardHeader>
+
+        {topProducts.length === 0 ? (
+          <p className="text-sm text-text-muted">Nothing has sold in the last seven days.</p>
+        ) : (
+          <ol className="flex flex-col gap-3">
+            {topProducts.map((entry) => (
+              <li key={entry.variantId} className="flex items-center justify-between gap-3">
+                <Link
+                  href={`/admin/products/${entry.productId}`}
+                  className="min-w-0 hover:text-brand-600"
+                >
+                  <span className="block truncate font-semibold">{entry.productName}</span>
+                  <span className="block truncate text-[13px] text-text-muted">
+                    {entry.variantName} · {entry.sku}
+                  </span>
+                </Link>
+                <span className="flex shrink-0 items-center gap-3 tabular-nums">
+                  <span className="font-semibold">{entry.unitsSold} sold</span>
+                  <span className="text-[13px] text-text-muted">
+                    {formatPeso(entry.revenueCents)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Card>
 
       <Card>
         <CardHeader>

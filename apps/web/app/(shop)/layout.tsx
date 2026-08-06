@@ -6,12 +6,19 @@ import { CartProvider } from "@/components/shop/cart-provider";
 import { SearchBox } from "@/components/shop/search-box";
 import { readCart } from "@/lib/cart-session";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { listCategories } from "@/lib/services/catalog.service";
+import { readSetting } from "@/lib/services/settings.service";
 
 export default async function ShopLayout({ children }: { children: ReactNode }) {
   // The cart is read on the server so the first paint already has the right count — a badge
   // that appears a beat late looks like the cart lost something.
-  const [categories, session, cart] = await Promise.all([listCategories(), auth(), readCart()]);
+  const [categories, session, cart, announcement] = await Promise.all([
+    listCategories(),
+    auth(),
+    readCart(),
+    readSetting(db, "announcement", ""),
+  ]);
   const topLevel = categories.filter((c) => !c.parentId && c._count.products > 0);
 
   return (
@@ -27,6 +34,17 @@ export default async function ShopLayout({ children }: { children: ReactNode }) 
         >
           Skip to content
         </a>
+
+        {/*
+          Empty means hidden — an announcement bar showing an empty strip is worse than no bar.
+          Not dismissible: the store has one line to say something, and a dismissed bar that
+          never comes back makes it useless for the next thing.
+        */}
+        {announcement ? (
+          <p className="bg-brand-600 px-4 py-2 text-center text-[13px] font-medium text-white">
+            {announcement}
+          </p>
+        ) : null}
 
         <header className="border-b border-border-subtle bg-surface">
           <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-4 px-4 py-3 md:px-6">

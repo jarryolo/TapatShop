@@ -30,6 +30,9 @@ export type AuditAction =
   | "coupon.create"
   | "coupon.update"
   | "coupon.delete"
+  | "banner.create"
+  | "banner.update"
+  | "banner.delete"
   | "inventory.adjust"
   | "user.verify_member"
   | "user.revoke_member"
@@ -137,4 +140,97 @@ export function diff<T extends Record<string, unknown>>(
   }
 
   return { before: beforeChanged, after: afterChanged };
+}
+
+// ─────────────────────────────  reading the log  ─────────────────────────────
+
+export interface AuditFilters {
+  actorId?: string | null;
+  entity?: string | null;
+  action?: string | null;
+  /** Manila calendar days, `YYYY-MM-DD`, inclusive at both ends. */
+  from?: string | null;
+  to?: string | null;
+  q?: string | null;
+  limit?: number;
+  cursor?: string | null;
+}
+
+/**
+ * A date the admin typed, as the UTC instant that Manila day begins or ends.
+ *
+ * Filtering on the raw string would compare a Manila date against a UTC timestamp and quietly
+ * drop the first eight hours of every day — the same trap the dashboard's "today" avoids.
+ */
+function manilaBoundary(day: string, edge: "start" | "end"): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const time = edge === "start" ? "00:00:00.000" : "23:59:59.999";
+  const parsed = new Date(`${day}T${time}+08:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function auditWhere(filters: AuditFilters): Prisma.AuditLogWhereInput {
+  const from = filters.from ? manilaBoundary(filters.from, "start") : null;
+  const to = filters.to ? manilaBoundary(filters.to, "end") : null;
+
+  return {
+    ...(filters.actorId ? { actorId: filters.actorId } : {}),
+    ...(filters.entity ? { entity: filters.entity } : {}),
+    ...(filters.action ? { action: filters.action } : {}),
+    ...(from || to
+      ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } }
+      : {}),
+    // Matches the entity id directly, so pasting an order or product id finds its history.
+    ...(filters.q?.trim() ? { entityId: filters.q.trim() } : {}),
+  };
+}
+
+/**
+ * A page of the log, newest first.
+ *
+ * Cursor paginated rather than offset: this table only grows, and an offset deep into it
+ * makes MySQL walk every row it skips.
+ */
+export async function listAuditLog(tx: Db, filters: AuditFilters = {}) {
+  const take = Math.min(filters.limit ?? 50, 200);
+
+  const rows = await tx.auditLog.findMany({
+    where: auditWhere(filters),
+    orderBy: { createdAt: "desc" },
+    take: take + 1,
+    ...(filters.cursor ? { cursor: { id: filters.cursor }, skip: 1 } : {}),
+    include: { actor: { select: { id: true, name: true, email: true, role: true } } },
+  });
+
+  const hasMore = rows.length > take;
+  const page = hasMore ? rows.slice(0, take) : rows;
+
+  return { rows: page, nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null };
+}
+
+/** The distinct actors, entities and actions present, to fill the filter dropdowns. */
+export async function auditFacets(tx: Db) {
+  const [actors, entities, actions] = await Promise.all([
+    tx.user.findMany({
+      where: { role: { in: ["admin", "staff"] } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, role: true },
+    }),
+    tx.auditLog.findMany({
+      distinct: ["entity"],
+      select: { entity: true },
+      orderBy: { entity: "asc" },
+    }),
+    tx.auditLog.findMany({
+      distinct: ["action"],
+      select: { action: true },
+      orderBy: { action: "asc" },
+    }),
+  ]);
+
+  return {
+    actors,
+    entities: entities.map((row) => row.entity),
+    actions: actions.map((row) => row.action),
+  };
 }

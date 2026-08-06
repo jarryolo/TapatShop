@@ -360,8 +360,28 @@ which is the thing worth finding.
   money and the discount is on the order; it returns `over_cap` so the caller can flag it.
 
 **P4-06 · Dashboard, content, settings, audit log.**
-- [ ] Dashboard figures reconcile against a manual query
-- [ ] Audit log is filterable by actor, entity, and date
+- [x] Dashboard figures reconcile against a manual query. They did not before: "awaiting
+      action" and "low stock" were the `.length` of a list capped at `take: 8`, so both read 8
+      no matter how deep the queue was, and sales showed gross rather than net of refunds.
+      Extracted to `dashboard.service.ts` where every figure is counted rather than inferred,
+      and each test recomputes its expectation a second way instead of asserting a constant.
+      Lists on the page are now explicitly samples and say "See all 23" when truncated. Top
+      products this week added, ranked by units rather than revenue — it is a restocking
+      question, and revenue puts one windbreaker above forty bags of coffee.
+- [x] Audit log is filterable by actor, entity, action and date, with cursor paging. Dates are
+      Manila calendar days converted to UTC instants at the boundary; filtering on the raw
+      string would silently drop the first eight hours of every day.
+- [x] Settings are admin-only, declared rather than open key-value, range-checked, and audited
+      one field at a time so one change is one entry.
+- [x] Content: banner CRUD with a schedule, and the announcement bar wired into the shop.
+- **A live PayMongo key was leaking into the page source.** `listSettings` masked the value
+  after reading it, which is not enough: Next 15's dev build ships the resolved value of every
+  awaited promise to the browser for its performance timeline, so the `findMany()` that
+  selected the column put the plaintext key into the HTML. Fixed by never selecting it — two
+  queries, and the secret column is absent from the one covering secret keys. A test asserts
+  the emitted SQL, not just the returned shape. Also fixed `homeShelves` ignoring
+  `startsAt`/`endsAt`, so a scheduled banner appeared immediately and an expired one never
+  stopped.
 
 **P4-07 · Reviews and wishlist.**
 - [ ] Only verified purchasers can review; reviews require moderation before display
