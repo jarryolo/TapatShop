@@ -1,0 +1,13 @@
+# The app runs on Linux in Docker. Normalise to LF in the repo regardless of platform.
+* text=auto eol=lf
+
+# Shell scripts must keep LF or they break inside containers.
+*.sh text eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff2 binary
