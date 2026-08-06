@@ -279,8 +279,20 @@ ticket belongs with P3-05.
 ## Phase 4 — Operations
 
 **P4-01 · Admin orders.** List, detail, transitions, tracking, packing slip, CSV export.
-- [ ] Adding a tracking number sends the shipped email exactly once
-- [ ] Packing slip prints cleanly on A4
+- [~] Adding a tracking number sends the shipped email exactly once — the **exactly once**
+      half is verified live: saving tracking ships the order and writes one `shipped` event,
+      and correcting the number afterwards updates it without a second one. The **sends**
+      half is still blocked on a Resend key; `email.service.ts` remains the logging stub.
+- [~] Packing slip prints cleanly on A4 — `@page { size: A4; margin: 14mm }`, controls hidden
+      with `no-print`, and rows guarded with `break-inside: avoid`. **Nothing has actually
+      been printed**, so "cleanly" is unverified — someone needs to send one to a real
+      printer. Prices are hidden by default (`?prices=true` shows them): a slip left in a box
+      should not double as an invoice.
+
+Also in this ticket: the admin now reads live data everywhere and `lib/admin/fixtures.ts` is
+deleted. Filters, search, transitions, tracking and CSV export all verified against the
+running app. The export is filter-aware, carries a UTF-8 BOM so Excel renders the peso sign,
+and prefixes `=`, `+`, `-` and `@` so a spreadsheet cannot execute a customer-supplied value.
 
 **P4-02 · Refunds.** Full and partial, with optional restock.
 - [ ] Refund calls PayMongo and reconciles on the webhook
