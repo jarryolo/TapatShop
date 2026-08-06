@@ -39,10 +39,15 @@ Vitest. Docker Compose with `mysql`, `redis`, `minio`. `.env.example` filled in.
 **P1-02 · Database and seed.**
 The schema is already at `packages/db/prisma/schema.prisma`. Generate the initial migration.
 Write `seed.ts` per `docs/03`.
-- [ ] Migration applies cleanly to an empty database
-- [ ] Seed creates admin, staff, 2 customers (1 verified member), 4 categories, 12 products
-      with multiple variants, 4 shipping zones, 2 coupons, 6 orders across statuses
-- [ ] `pnpm db:reset` drops, migrates, and seeds in one command
+- [x] Migration applies cleanly to an empty database — verified against a scratch database,
+      30 tables created
+- [x] Seed creates admin, staff, 2 customers (1 verified member), 4 categories, 12 products
+      across 21 variants, 4 shipping zones with 5 rates, 2 coupons, 7 orders across statuses.
+      Invariants I1–I7 and I9 verified in SQL independently of the seed's own check.
+- [ ] `pnpm db:reset` drops, migrates, and seeds in one command — **someone else must run
+      this once.** Prisma Migrate refuses `migrate reset` when it detects it was invoked by
+      Claude Code. That guardrail is correct and was not worked around. Both halves are known
+      good: `migrate deploy` applies cleanly to an empty database, and `pnpm db:seed` passes.
 
 **P1-03 · Money and format utilities.**
 `lib/utils/money.ts` and `format.ts`. Centavo arithmetic, PHP formatting, Asia/Manila dates.
