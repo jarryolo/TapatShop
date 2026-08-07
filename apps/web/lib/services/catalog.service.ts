@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { type Cents, memberUnitPrice } from "@/lib/utils/money";
 
 import { liveWhere } from "./content.service";
+import { ratingSummary } from "./review.service";
 import { idFilter, searchProductIds } from "./search.service";
 
 /**
@@ -455,9 +456,14 @@ export async function getProductDetail(
 
   if (!product) return null;
 
-  const ratings = product.reviews.map((review) => review.rating);
-  const ratingAverage =
-    ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null;
+  /**
+   * Averaged over every approved review, not the twenty shown.
+   *
+   * The list is capped at 20 for the page; averaging that slice would rate a popular product
+   * on its newest reviews only, and `ratingCount` would sit at 20 forever however many it
+   * really had. The summary groups in SQL over the whole set.
+   */
+  const summary = await ratingSummary(db, product.id);
 
   return {
     id: product.id,
@@ -496,8 +502,8 @@ export async function getProductDetail(
       createdAt: review.createdAt,
       verifiedPurchase: Boolean(review.orderId),
     })),
-    ratingAverage,
-    ratingCount: ratings.length,
+    ratingAverage: summary.average,
+    ratingCount: summary.total,
   };
 }
 

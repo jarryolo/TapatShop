@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import { BuyBox } from "@/components/shop/buy-box";
+import { NotifyMe } from "@/components/shop/notify-me";
+import { ReviewForm, type ReviewGate } from "@/components/shop/review-form";
 import { Rating } from "@/components/ui/rating";
 import { Tabs } from "@/components/ui/tabs";
 import type { DetailVariant, ProductDetail } from "@/lib/services/catalog.service";
@@ -19,11 +21,16 @@ import { formatDate } from "@/lib/utils/format";
 export function ProductDetailView({
   product,
   isMember,
+  reviewGate,
+  signedInEmail,
 }: {
   product: ProductDetail;
   isMember: boolean;
+  reviewGate: ReviewGate;
+  signedInEmail: string | null;
 }) {
   const [activeImage, setActiveImage] = useState(0);
+  const [selected, setSelected] = useState<DetailVariant | null>(product.variants[0] ?? null);
 
   /**
    * Points the gallery at the variant's image when there is one.
@@ -33,6 +40,7 @@ export function ProductDetailView({
    * pipeline lands in P1-06 and variants can own images properly.
    */
   function onVariantChange(variant: DetailVariant) {
+    setSelected(variant);
     const index = product.images.findIndex((image) =>
       image.alt?.toLowerCase().includes(variant.name.toLowerCase())
     );
@@ -119,6 +127,17 @@ export function ProductDetailView({
             isMember={isMember}
             onVariantChange={onVariantChange}
           />
+
+          {/* Under the buy box rather than replacing it: the variant picker still has to be
+              reachable, since another size may well be in stock. */}
+          {selected && selected.stockQty <= 0 ? (
+            <NotifyMe
+              slug={product.slug}
+              variantId={selected.id}
+              signedInEmail={signedInEmail}
+              key={selected.id}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -165,6 +184,11 @@ export function ProductDetailView({
                     ))}
                   </ul>
                 ),
+            },
+            {
+              id: "write-review",
+              label: "Write a review",
+              content: <ReviewForm productId={product.id} gate={reviewGate} />,
             },
           ]}
         />

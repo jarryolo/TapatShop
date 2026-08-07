@@ -33,6 +33,8 @@ export type AuditAction =
   | "banner.create"
   | "banner.update"
   | "banner.delete"
+  | "review.approve"
+  | "review.reject"
   | "inventory.adjust"
   | "user.verify_member"
   | "user.revoke_member"

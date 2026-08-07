@@ -384,8 +384,34 @@ which is the thing worth finding.
   stopped.
 
 **P4-07 · Reviews and wishlist.**
-- [ ] Only verified purchasers can review; reviews require moderation before display
-- [ ] Back-in-stock notification fires on restock
+- [x] Only verified purchasers can review; reviews require moderation before display. There was
+      no way to submit a review at all before this — the display path filtered on `approved`
+      correctly, but nothing wrote one. Eligibility checks the order items (the record that the
+      purchase happened) plus `docs/07`'s verified-email rule, and `orderId` is stamped from
+      that check rather than taken from the request, so the "verified purchase" badge means
+      what it says. Verified over HTTP: guest 401, signed-in non-purchaser 403, unverified
+      email 403, second review 422, and the pending review absent from **both** the product
+      page and the product API until an admin published it — then gone again when unpublished.
+- [~] Back-in-stock notification fires on restock. Proven end to end: subscribing while in
+      stock is refused, a guest can subscribe once it is empty, the restock fires exactly one
+      email, and a second restock fires none. **The transport is still the P3-06 stub**, so
+      what is verified is that the right recipients are claimed on the right event and the
+      mailer is called — not that mail leaves the building.
+- New `StockSubscription` table. Keyed on email rather than userId alone, because the person
+  most likely to want this is the one who just found the item out of stock, and making them
+  register first loses the sale we are recovering.
+- The firing rule is a **crossing**, not a level: alerts go out when availability goes from
+  nothing to something. A level check would email everyone again on the second delivery of the
+  week. A control test asserts a top-up that never crossed zero fires nothing.
+- Two concurrency bugs found and fixed while building this, both pre-existing in shape:
+  - `claimAlertsFor` read-then-stamped without a lock, so two restocks landing together both
+    handed out the same subscriber — one person, two emails. Now takes a row lock on the
+    variant; tested at ten-way concurrency.
+  - `adjustStock` was a read-modify-write on `stockQty` with no lock, so two admins adjusting
+    at once lost one adjustment while keeping its movement row — drift arriving from a bug
+    rather than from reality, which is what `reconcileStock` exists to catch.
+- Also fixed: `getProductDetail` averaged the rating over the twenty reviews it displayed, so
+  a popular product was rated on its newest twenty and `ratingCount` sat at 20 forever.
 
 ---
 

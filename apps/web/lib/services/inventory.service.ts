@@ -1,8 +1,9 @@
-import type { MovementReason, Prisma, PrismaClient } from "@tapatshop/db";
+﻿import type { MovementReason, Prisma, PrismaClient } from "@tapatshop/db";
 
 import { db } from "@/lib/db";
 
 import { log } from "./audit.service";
+import { claimAlertsFor, type PendingAlert, sendAlerts } from "./stock-alert.service";
 
 /**
  * Inventory. The ledger is the truth; `ProductVariant.stockQty` is a derived cache.
@@ -33,7 +34,7 @@ export interface AdjustInput {
   /** Signed. Negative writes stock off, positive puts it back. Zero is rejected. */
   delta: number;
   reason: ManualReason;
-  /** Free text. Required — see below. */
+  /** Free text. Required â€” see below. */
   note: string;
   actorId: string;
   ip?: string | null;
@@ -41,7 +42,18 @@ export interface AdjustInput {
 }
 
 export type AdjustResult =
-  | { kind: "ok"; balanceAfter: number; movementId: string }
+  | {
+      kind: "ok";
+      balanceAfter: number;
+      movementId: string;
+      /**
+       * People to tell that this is back, claimed inside the transaction.
+       *
+       * Handed to the caller rather than emailed here: sending inside the transaction would
+       * hold row locks across a network call, the same mistake checkout avoids with PayMongo.
+       */
+      alerts: PendingAlert[];
+    }
   | { kind: "no_reason" }
   | { kind: "zero_delta" }
   | { kind: "would_go_negative"; stockQty: number }
@@ -50,7 +62,7 @@ export type AdjustResult =
 /**
  * Adjusts stock by hand.
  *
- * The note is mandatory — docs/01 and P4-03 both say so, and the reason is the entire point
+ * The note is mandatory â€” docs/01 and P4-03 both say so, and the reason is the entire point
  * of the ledger. "stockQty is 3 and I do not know why" is the failure this prevents, so an
  * adjustment with a reason code but no explanation is refused rather than accepted with an
  * empty string.
@@ -59,6 +71,18 @@ export async function adjustStock(tx: Db, input: AdjustInput): Promise<AdjustRes
   if (!input.note.trim()) return { kind: "no_reason" };
   if (!Number.isInteger(input.delta) || input.delta === 0) return { kind: "zero_delta" };
 
+  /**
+   * Lock the variant before reading its stock.
+   *
+   * This is a read-modify-write on `stockQty`. Without the lock two admins adjusting the same
+   * variant at once both read the same number and both write their own total, so one
+   * adjustment vanishes while its movement row stays — which is exactly the drift
+   * `reconcileStock` exists to find, arriving from a bug rather than from reality.
+   *
+   * It also serialises the back-in-stock claim below, since that runs in this transaction.
+   */
+  await tx.$queryRaw`SELECT id FROM product_variants WHERE id = ${input.variantId} FOR UPDATE`;
+
   const variant = await tx.productVariant.findUnique({
     where: { id: input.variantId },
     select: { id: true, sku: true, stockQty: true },
@@ -66,6 +90,13 @@ export async function adjustStock(tx: Db, input: AdjustInput): Promise<AdjustRes
   if (!variant) return { kind: "not_found" };
 
   const balanceAfter = variant.stockQty + input.delta;
+  /**
+   * The crossing that back-in-stock alerts fire on: nothing, then something.
+   *
+   * Read before the update, because after it there is no way to tell a restock from a top-up.
+   * A level check ("stock > 0") would email the same people again on every later delivery.
+   */
+  const cameBackInStock = variant.stockQty <= 0 && balanceAfter > 0;
   // Physical stock cannot be negative. A write-off larger than what is on hand is a counting
   // error, and silently storing -2 makes every later number wrong.
   if (balanceAfter < 0) return { kind: "would_go_negative", stockQty: variant.stockQty };
@@ -98,11 +129,13 @@ export async function adjustStock(tx: Db, input: AdjustInput): Promise<AdjustRes
     userAgent: input.userAgent,
   });
 
-  return { kind: "ok", balanceAfter, movementId: movement.id };
+  const alerts = cameBackInStock ? await claimAlertsFor(tx, input.variantId) : [];
+
+  return { kind: "ok", balanceAfter, movementId: movement.id, alerts };
 }
 
 /**
- * Records a sale's stock movement. Called from the paid webhook — docs/06 step 5.
+ * Records a sale's stock movement. Called from the paid webhook â€” docs/06 step 5.
  *
  * Separate from adjustStock because it takes no note and no human actor, and because it is
  * allowed to drive stock negative: if the reservation and the payment raced, the money is
@@ -138,7 +171,7 @@ export async function recordSale(
   return balanceAfter;
 }
 
-// ─────────────────────────────  reads  ─────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  reads  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface StockFilters {
   q?: string;
@@ -190,7 +223,7 @@ export async function stockList(tx: Db, filters: StockFilters = {}) {
     return {
       ...variant,
       reserved,
-      // What a customer could actually buy right now — invariant I5.
+      // What a customer could actually buy right now â€” invariant I5.
       available: Math.max(0, variant.stockQty - reserved),
       isLow: variant.stockQty <= variant.lowStockThreshold,
     };
@@ -224,7 +257,7 @@ export async function movementsFor(tx: Db, variantId: string, limit = 100) {
   });
 }
 
-// ─────────────────────────────  reconciliation  ─────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  reconciliation  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface Drift {
   variantId: string;
@@ -246,7 +279,7 @@ export interface ReconcileResult {
 /**
  * Rebuilds `stockQty` from the ledger and reports every disagreement.
  *
- * This is the point of keeping a ledger at all — docs/03: "A reconciliation job can rebuild
+ * This is the point of keeping a ledger at all â€” docs/03: "A reconciliation job can rebuild
  * stockQty from the ledger; that's the point." Reports by default and only writes when asked,
  * because a silent repair hides the bug that caused the drift.
  */
@@ -295,7 +328,21 @@ export async function reconcileStock(
 }
 
 export const inventoryService = {
-  adjust: (input: AdjustInput) => db.$transaction((tx) => adjustStock(tx, input)),
+  /**
+   * Adjusts stock, then tells anyone who was waiting â€” after the commit, never inside it.
+   *
+   * A failed send must not roll back a stock movement. The ledger is the truth about what is
+   * on the shelf; an email that bounced does not change what was counted.
+   */
+  adjust: async (input: AdjustInput) => {
+    const result = await db.$transaction((tx) => adjustStock(tx, input));
+
+    if (result.kind === "ok" && result.alerts.length > 0) {
+      await sendAlerts(result.alerts);
+    }
+
+    return result;
+  },
   list: (filters?: StockFilters) => stockList(db, filters),
   movements: (variantId: string, limit?: number) => movementsFor(db, variantId, limit),
   reconcile: (options?: { repair?: boolean }) => reconcileStock(db, options),

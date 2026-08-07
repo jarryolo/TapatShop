@@ -133,6 +133,7 @@ model User {
   reviews        Review[]
   wishlistItems  WishlistItem[]
   notifications  Notification[]
+  stockSubs      StockSubscription[]
   auditLogs      AuditLog[]        @relation("AuditActor")
   movements      InventoryMovement[]
   recoveryRequests AccountRecoveryRequest[] @relation("RecoverySubject")
@@ -352,8 +353,9 @@ model ProductVariant {
   product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   cartItems    CartItem[]
   orderItems   OrderItem[]
-  movements    InventoryMovement[]
-  reservations StockReservation[]
+  movements     InventoryMovement[]
+  reservations  StockReservation[]
+  subscriptions StockSubscription[]
 
   @@index([productId])
   @@index([stockQty])
@@ -712,6 +714,31 @@ model WishlistItem {
 
   @@unique([userId, productId])
   @@map("wishlist_items")
+}
+
+/// Someone waiting for a variant to come back.
+///
+/// Keyed on email rather than userId alone: the person most likely to want this is the one who
+/// just found the thing out of stock, and requiring them to register first loses the sale we
+/// are trying to recover. `userId` is filled in when we know it, for the notification bell.
+///
+/// `notifiedAt` makes the send idempotent — a restock of 2 units followed by another of 3 must
+/// not email the same person twice. Waiting rows are the ones with it still null.
+model StockSubscription {
+  id         String    @id @default(cuid())
+  variantId  String
+  userId     String?
+  email      String
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  user    User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // One waiting row per address per variant. Asking twice is not two notifications.
+  @@unique([variantId, email])
+  @@index([variantId, notifiedAt])
+  @@map("stock_subscriptions")
 }
 
 model Banner {

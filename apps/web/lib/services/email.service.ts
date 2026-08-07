@@ -19,7 +19,9 @@ export type EmailTemplate =
   | "order-confirmation"
   | "order-shipped"
   | "order-delivered"
-  | "order-refunded";
+  | "order-refunded"
+  // Fires on the out-of-stock → in-stock crossing, once per waiting subscription.
+  | "back-in-stock";
 
 export interface EmailMessage {
   to: string;
