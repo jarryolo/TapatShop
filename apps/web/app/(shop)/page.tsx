@@ -4,12 +4,21 @@ import Link from "next/link";
 import { ProductCard, ProductGrid } from "@/components/shop/product-card";
 import { ButtonLink } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { homeShelves, listCategories, memberDiscountPercent } from "@/lib/services/catalog.service";
+import { readSetting } from "@/lib/services/settings.service";
+import { jsonLd, pageMetadata } from "@/lib/seo";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/structured-data";
 
 export const metadata: Metadata = {
-  title: "TapatShop — honest goods from the brotherhood",
-  description:
-    "Member-made goods, branded merchandise, books and food products. Clear prices, no fake urgency.",
+  ...pageMetadata({
+    title: "Honest goods from the brotherhood",
+    description:
+      "Member-made goods, branded merchandise, books and food products. Clear prices, no fake urgency.",
+    path: "/",
+  }),
+  // The home page is the one title that should not carry the "— TapatShop" suffix twice.
+  title: { absolute: "TapatShop — honest goods from the brotherhood" },
 };
 
 export const revalidate = 300;
@@ -24,9 +33,19 @@ export default async function HomePage() {
   ]);
 
   const tiles = categories.filter((c) => !c.parentId && c._count.products > 0);
+  const storeName = String(await readSetting(db, "store_name", "TapatShop"));
 
   return (
     <div className="mx-auto max-w-[1280px] px-4 py-8 md:px-6 md:py-12">
+      {/* Identity and the search box, declared once on the home page rather than site-wide. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(organizationJsonLd(storeName))}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(websiteJsonLd(storeName))}
+      />
       {/* Hero. No countdown, no "hurry" — docs/01 and docs/05 rule those out explicitly. */}
       <section className="rounded-[var(--radius-card)] bg-brand-600 px-6 py-12 text-white md:px-12 md:py-16">
         <h1 className="max-w-2xl text-3xl font-semibold md:text-[44px] md:leading-[1.1]">

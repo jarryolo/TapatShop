@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { db } from "@/lib/db";
+import { pageMetadata } from "@/lib/seo";
 import { readSetting } from "@/lib/services/settings.service";
 
-export const metadata: Metadata = { title: "Returns and refunds — TapatShop" };
+export const metadata: Metadata = pageMetadata({
+  title: "Returns and refunds",
+  description: "How to return something to TapatShop, and how a refund reaches you.",
+  path: "/returns",
+});
 
 export const revalidate = 3600;
 

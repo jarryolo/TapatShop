@@ -10,22 +10,33 @@ import {
   memberDiscountPercent,
   priceBounds,
 } from "@/lib/services/catalog.service";
+import { jsonLd, listingCanonical, pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd } from "@/lib/structured-data";
 import { parseCatalogQuery } from "@/lib/validators/catalog";
 
 export const revalidate = 300;
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const category = await getCategoryBySlug(slug);
-  if (!category) return { title: "Not found — TapatShop" };
+  if (!category) return { title: "Not found" };
+
+  const page = Number(query.page ?? "1");
 
   return {
-    title: `${category.name} — TapatShop`,
-    description: category.description ?? undefined,
+    ...pageMetadata({
+      title: page > 1 ? `${category.name}, page ${page}` : category.name,
+      description: category.description ?? undefined,
+      path: `/c/${slug}`,
+    }),
+    // Filters and sort collapse onto the plain category URL — see `listingCanonical`.
+    alternates: { canonical: listingCanonical(`/c/${slug}`, query) },
   };
 }
 
@@ -65,6 +76,17 @@ export default async function CategoryPage({
 
   return (
     <div className="mx-auto max-w-[1280px] px-4 py-8 md:px-6 md:py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "All products", path: "/products" },
+            { name: category.name, path: `/c/${slug}` },
+          ])
+        )}
+      />
+
       <Breadcrumb
         className="mb-4"
         items={[

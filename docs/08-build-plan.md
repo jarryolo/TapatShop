@@ -442,6 +442,26 @@ which is the thing worth finding.
   and anonymising an actor is how an audit log stops answering "who did this".
 
 **P5-02 · SEO and metadata.** Product structured data, sitemap, robots, OG images, canonical URLs.
+- [x] All of it was missing: no `metadataBase`, no robots, no sitemap, no canonicals, no
+      structured data, no OG images.
+- [x] **Verified against a real production build**, not just dev — `NEXT_PUBLIC_BASE_URL` set to
+      a live domain, `pnpm build`, `pnpm start`. That is the only way to prove the environment
+      gate actually opens: everything is `noindex` on localhost by design, and a bug there would
+      have shipped a permanently unindexable shop with nothing on screen to show for it.
+- [x] Structured data: `Product` with `Offer`/`AggregateOffer`, `BreadcrumbList`, `Organization`,
+      `WebSite`. Two honesty rules, both tested: **no `aggregateRating` until a review is
+      approved** ("0 out of 5" and "no rating" are different claims), and **the regular price,
+      never the member price** — member pricing needs a verified membership, so quoting it in
+      search results would advertise a number most people cannot get.
+- [x] Canonicals collapse filters and sort onto the plain URL and keep `page`. Search results
+      are `noindex, follow` — they are generated from someone else's query and would otherwise
+      create an unbounded set of thin pages.
+- [x] OG images generated with `next/og` rather than served as files: there is no media pipeline
+      yet (P1-06 blocked), and a drawn card cannot go stale against the design tokens. Both the
+      default and the per-product card confirmed to render as real PNGs over HTTP.
+- Caught during verification: `pageMetadata` set `openGraph.images` unconditionally, which
+  **overrides** Next's `opengraph-image.tsx` file convention — every product was advertising the
+  generic site card. Only visible by fetching the page and reading the tag.
 
 **P5-03 · Security pass.**
 - [ ] Rate limits on every sensitive endpoint

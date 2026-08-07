@@ -4,12 +4,34 @@ import Link from "next/link";
 import { CatalogListing } from "@/components/shop/catalog-listing";
 import { auth } from "@/lib/auth";
 import { listCatalog, memberDiscountPercent, priceBounds } from "@/lib/services/catalog.service";
+import { listingCanonical, pageMetadata } from "@/lib/seo";
 import { parseCatalogQuery } from "@/lib/validators/catalog";
 
-export const metadata: Metadata = {
-  title: "All products — TapatShop",
-  description: "Member-made goods, branded merchandise, books and food products.",
-};
+/**
+ * Canonical drops the filters and keeps the page number — see `listingCanonical`.
+ *
+ * Also `robots: noindex` once a search term is involved: a search results page is generated on
+ * demand from someone else's query, and indexing those creates an unbounded set of thin pages
+ * that all say "no results" a week later.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const page = Number(params.page ?? "1");
+
+  return {
+    ...pageMetadata({
+      title: page > 1 ? `All products, page ${page}` : "All products",
+      description: "Member-made goods, branded merchandise, books and food products.",
+      path: "/products",
+    }),
+    alternates: { canonical: listingCanonical("/products", params) },
+    ...(params.q ? { robots: { index: false, follow: true } } : {}),
+  };
+}
 
 // Catalog pages are cached for five minutes and revalidated by tag on product update —
 // docs/02. The member price is per-viewer, so a signed-in member's page is dynamic.

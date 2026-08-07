@@ -2,9 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { db } from "@/lib/db";
+import { pageMetadata } from "@/lib/seo";
 import { readSetting } from "@/lib/services/settings.service";
 
-export const metadata: Metadata = { title: "Privacy policy — TapatShop" };
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy policy",
+  description:
+    "What personal data TapatShop collects, why, how long it is kept, and how to have it removed.",
+  path: "/privacy",
+});
 
 /**
  * The privacy policy, required by the Data Privacy Act (RA 10173) — docs/01.
