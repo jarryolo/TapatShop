@@ -14,3 +14,13 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - tsx@4.23.9
+
+# Transitive dependencies pinned past a published advisory — P5-03.
+#
+# Both arrive through `next` rather than being chosen here, so there is no direct version to
+# bump. postcss runs at build time on our own stylesheets and sharp only sees images an admin
+# uploaded, which is why neither was urgent; pinning them costs nothing and makes the audit
+# say so rather than requiring someone to re-reason about it every time.
+overrides:
+  postcss: ">=8.5.23"
+  sharp: ">=0.35.0"

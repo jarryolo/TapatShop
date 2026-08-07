@@ -4,8 +4,8 @@ import { db } from "@/lib/db";
 import { productService } from "@/lib/services/product.service";
 import { categoryInputSchema } from "@/lib/validators/product";
 
-export async function GET() {
-  const guard = await requireStaff();
+export async function GET(request: Request) {
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const categories = await db.category.findMany({
@@ -17,7 +17,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const parsed = categoryInputSchema.safeParse(await readJson(request));

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdminPage } from "@/lib/api/guard";
 import { db } from "@/lib/db";
 import { auditFacets, listAuditLog } from "@/lib/services/audit.service";
 import { formatDateTime } from "@/lib/utils/format";
@@ -58,6 +59,9 @@ export default async function AdminAuditLogPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  // Admin only. Re-checked here, not just in middleware, per docs/02.
+  await requireAdminPage();
+
   const params = await searchParams;
 
   const [{ rows, nextCursor }, facets] = await Promise.all([

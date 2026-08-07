@@ -9,7 +9,19 @@ const querySchema = z.object({
   weightGrams: z.coerce.number().int().min(0).max(1_000_000).default(0),
 });
 
-/** `?region=&subtotalCents=&weightGrams=` → the rates available — docs/04. */
+/**
+ * `?region=&subtotalCents=&weightGrams=` → the rates available — docs/04.
+ *
+ * **Display only.** `subtotalCents` comes from the browser, which makes this the one endpoint
+ * where a client can name a figure that changes a price on screen — claim a subtotal above the
+ * free-shipping threshold and the quote comes back free.
+ *
+ * That buys nothing, because checkout does not use this. `validateCheckout` re-quotes from the
+ * cart's own subtotal and looks the chosen rate up among the options it computed itself, so a
+ * basket below the threshold pays the fee whatever was quoted here. Both halves are covered in
+ * checkout.service.integration.test.ts — if this endpoint is ever wired into pricing, those
+ * tests are the ones that should stop it.
+ */
 export async function GET(request: Request) {
   const limited = await enforceRateLimit(request, "default");
   if (limited) return limited;

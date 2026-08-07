@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { requireStaff } from "@/lib/api/guard";
+import { requireRole } from "@/lib/api/guard";
 import { db } from "@/lib/db";
 import { getCustomer } from "@/lib/services/customer.service";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
@@ -29,7 +29,7 @@ export default async function AdminCustomerPage({ params }: { params: Promise<{ 
   const { id } = await params;
 
   // The layout already established staff; this is only to decide what the page may offer.
-  const guard = await requireStaff();
+  const guard = await requireRole("staff", "admin");
   const isAdmin = guard.ok && guard.actor.role === "admin";
 
   const customer = await getCustomer(db, id);

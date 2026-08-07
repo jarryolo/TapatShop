@@ -121,6 +121,14 @@ model User {
   // Set on password reset and on email change, per docs/07-auth-and-recovery.md.
   sessionsRevokedAt DateTime?
 
+  /// TOTP second factor — P5-03, required for staff and admin.
+  ///
+  /// The secret is stored while enrolment is pending and stays afterwards; `totpEnabledAt` is
+  /// what decides whether it is enforced. Keeping the two separate means a half-finished
+  /// enrolment cannot lock anybody out of their own account.
+  totpSecret    String?
+  totpEnabledAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -136,6 +144,7 @@ model User {
   stockSubs      StockSubscription[]
   deletionRequests AccountDeletionRequest[] @relation("DeletionSubject")
   deletionsReviewed AccountDeletionRequest[] @relation("DeletionReviewer")
+  recoveryCodes  RecoveryCode[]
   auditLogs      AuditLog[]        @relation("AuditActor")
   movements      InventoryMovement[]
   recoveryRequests AccountRecoveryRequest[] @relation("RecoverySubject")
@@ -773,6 +782,24 @@ model AccountDeletionRequest {
   @@index([status, createdAt])
   @@index([userId])
   @@map("account_deletion_requests")
+}
+
+/// A single-use way back in when the authenticator is gone — P5-03.
+///
+/// Without these, losing a phone means an admin locked out of the shop with no self-service
+/// path, and the pressure that creates is exactly how a "just turn 2FA off for me" habit
+/// starts. Stored as hashes: a table of plaintext bypass codes is a second password column.
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+  @@map("recovery_codes")
 }
 
 model Banner {

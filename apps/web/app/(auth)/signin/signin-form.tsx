@@ -30,6 +30,15 @@ export function SignInForm({
   );
   /** Set when the account signs in with a provider instead of a password. */
   const [useProviders, setUseProviders] = useState<string[] | null>(null);
+  /**
+   * Shown once we know the account has a second factor.
+   *
+   * The sign-in attempt itself cannot tell us: the credentials provider returns one uniform
+   * failure for a wrong password and a missing code alike, which is the property that stops it
+   * being an oracle. So the answer comes from the sign-in-methods lookup below instead.
+   */
+  const [needsCode, setNeedsCode] = useState(false);
+  const [totp, setTotp] = useState("");
   const [pending, setPending] = useState(false);
 
   async function onSubmit(event: React.FormEvent) {
@@ -57,10 +66,18 @@ export function SignInForm({
           exists: boolean;
           hasPassword: boolean;
           providers: string[];
+          requiresTwoFactor: boolean;
         };
 
         if (methods.exists && !methods.hasPassword && methods.providers.length > 0) {
           setUseProviders(methods.providers);
+          setPending(false);
+          return;
+        }
+
+        // Ask for the code up front, rather than failing once and then asking.
+        if (methods.requiresTwoFactor && !needsCode) {
+          setNeedsCode(true);
           setPending(false);
           return;
         }
@@ -69,12 +86,22 @@ export function SignInForm({
       // Guidance is a nicety. If it fails, fall through to a normal sign-in attempt.
     }
 
-    const result = await signIn("credentials", { email, password, redirect: false, callbackUrl });
+    const result = await signIn("credentials", {
+      email,
+      password,
+      totp,
+      redirect: false,
+      callbackUrl,
+    });
 
     setPending(false);
 
     if (result?.error) {
-      setError("That email and password do not match.");
+      setError(
+        needsCode
+          ? "That did not work. Check your password and the code showing right now."
+          : "That email and password do not match."
+      );
       return;
     }
 
@@ -120,6 +147,27 @@ export function SignInForm({
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
+
+        {needsCode ? (
+          <Field
+            id="totp"
+            label="Authentication code"
+            hint="From your authenticator app, or one of your recovery codes."
+            required
+          >
+            <Input
+              id="totp"
+              inputMode="text"
+              // Lets a password manager or the phone keyboard offer the current code.
+              autoComplete="one-time-code"
+              autoFocus
+              maxLength={20}
+              required
+              value={totp}
+              onChange={(event) => setTotp(event.target.value)}
+            />
+          </Field>
+        ) : null}
 
         {useProviders ? (
           <div

@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Sidebar } from "@/components/admin/sidebar";
-import { requireStaff } from "@/lib/api/guard";
+import { requireRole } from "@/lib/api/guard";
+import { db } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "Admin — TapatShop",
@@ -21,8 +22,25 @@ export const metadata: Metadata = {
  * The third is the one that matters. docs/02: middleware is a convenience, not a boundary.
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const guard = await requireStaff();
+  // requireRole, not requireStaff: a page render has no Request to key a rate limit on, and
+  // limiting page loads would throttle an admin for scrolling. The API behind it is limited.
+  const guard = await requireRole("staff", "admin");
   if (!guard.ok) redirect("/signin?next=/admin");
+
+  /**
+   * Enrolled, or nothing else — P5-03.
+   *
+   * Sent to the enrolment page rather than to sign-in, because they are signed in; bouncing
+   * them to a form they have already filled in correctly would be a loop with no exit.
+   *
+   * The page lives under /account rather than /admin for the same reason — inside this layout
+   * it would redirect to itself.
+   */
+  const enrolled = await db.user.findUnique({
+    where: { id: guard.actor.id },
+    select: { totpEnabledAt: true },
+  });
+  if (!enrolled?.totpEnabledAt) redirect("/account/two-factor");
 
   return (
     <div className="lg:flex">

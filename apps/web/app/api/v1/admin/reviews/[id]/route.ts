@@ -8,7 +8,7 @@ const bodySchema = z.object({ decision: z.enum(["approved", "rejected"]) });
 
 /** Moderation. Nothing a customer wrote appears on the shop until this has been called. */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

@@ -24,7 +24,7 @@ const bodySchema = z.object({
  * and a hand-crafted request must not be able to put an order in an impossible state.
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

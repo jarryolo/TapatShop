@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { StatCard } from "@/components/admin/stat-card";
+import { requireAdminPage } from "@/lib/api/guard";
 import { db } from "@/lib/db";
 import { listDeletionRequests } from "@/lib/services/privacy.service";
 
@@ -10,6 +11,9 @@ export const metadata: Metadata = { title: "Erasure requests — TapatShop admin
 export const dynamic = "force-dynamic";
 
 export default async function AdminDeletionRequestsPage() {
+  // Admin only. Re-checked here, not just in middleware, per docs/02.
+  await requireAdminPage();
+
   const requests = await listDeletionRequests(db);
 
   /**

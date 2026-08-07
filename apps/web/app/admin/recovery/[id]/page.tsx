@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdminPage } from "@/lib/api/guard";
 import { db } from "@/lib/db";
 import { recoveryEvidence } from "@/lib/services/customer.service";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
@@ -46,6 +47,9 @@ export default async function AdminRecoveryRequestPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // Admin only. Re-checked here, not just in middleware, per docs/02.
+  await requireAdminPage();
+
   const { id } = await params;
   const evidence = await recoveryEvidence(db, id);
   if (!evidence) notFound();

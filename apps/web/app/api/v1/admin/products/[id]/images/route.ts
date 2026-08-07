@@ -10,7 +10,7 @@ import { imageAltSchema, reorderImagesSchema } from "@/lib/validators/product";
  * Ordering and alt text work against whatever image rows already exist.
  */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

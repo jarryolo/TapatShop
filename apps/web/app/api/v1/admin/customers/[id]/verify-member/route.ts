@@ -16,7 +16,7 @@ const bodySchema = z.object({
  * one. requireAdmin rather than requireStaff is the whole point of this route.
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireAdmin();
+  const guard = await requireAdmin(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;
@@ -42,7 +42,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
 /** Withdraws verification. Also admin only, also audited. */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireAdmin();
+  const guard = await requireAdmin(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

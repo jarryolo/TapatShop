@@ -7,6 +7,7 @@ import { authConfig } from "@/lib/auth.config";
 import { db } from "@/lib/db";
 import { LIMITS, type RateLimitRule, clientIp, rateLimit, rateLimitKey } from "@/lib/rate-limit";
 import { linkOAuthAccount, signInWithPassword } from "@/lib/services/auth.service";
+import { verifyChallenge } from "@/lib/services/two-factor.service";
 
 /**
  * The full Auth.js setup. Node runtime only — it touches the database.
@@ -30,6 +31,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        // Declared, or Auth.js drops it before `authorize` ever sees it.
+        totp: { label: "Authentication code", type: "text" },
       },
 
       async authorize(credentials, request) {
@@ -70,6 +73,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // POST /api/v1/auth/sign-in-methods, not by the sign-in attempt itself, so that the
         // credentials endpoint stays a single uniform failure.
         if (result.kind !== "ok") return null;
+
+        /**
+         * The second factor, checked here — after the password, never instead of it.
+         *
+         * Order matters. Asking for a code before the password would tell an attacker which
+         * addresses have an account, and checking it after the session exists would mean a
+         * session briefly existed with only one factor behind it.
+         *
+         * An enrolled account with no code supplied fails the same way a wrong password does.
+         * The sign-in form retries with a code field once it sees that; the endpoint itself
+         * stays a single uniform failure, which is the property the rest of this file protects.
+         */
+        if (result.user.totpEnabledAt) {
+          const code = typeof credentials?.totp === "string" ? credentials.totp : "";
+          if (!code) return null;
+
+          const challenge = await verifyChallenge(db, result.user.id, code);
+          if (challenge.kind !== "ok") return null;
+        }
+
+        /**
+         * A staff or admin who has not enrolled yet still gets a session — and then gets no
+         * further. `requireStaff`/`requireAdmin` refuse them and the admin shell sends them to
+         * /account/two-factor.
+         *
+         * Refusing the sign-in outright instead would be circular: enrolling needs a session,
+         * and a session would need an enrolment. This way the door is shut without the key
+         * being locked inside the room.
+         */
 
         await db.user.update({
           where: { id: result.user.id },

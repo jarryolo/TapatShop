@@ -10,7 +10,7 @@ import { variantsSchema } from "@/lib/validators/product";
  * partially-applied save the normal outcome of a flaky connection.
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

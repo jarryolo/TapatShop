@@ -133,6 +133,54 @@ describeIntegration("checkout.service", () => {
       expect(result.quote.changes.some((change) => change.kind === "price_changed")).toBe(true);
     });
 
+    it("charges real shipping however the browser quoted it", async () => {
+      /**
+       * `GET /shipping/quote` takes a `subtotalCents` from the query string, because it has to
+       * quote something before an order exists. That makes it the one endpoint where a client
+       * can name a figure that moves a price on screen — claim ₱2,500 and the free-shipping
+       * threshold appears to be met.
+       *
+       * It is display-only, and this proves it: checkout re-quotes from the server's own
+       * subtotal, so a basket below the threshold pays the fee no matter what was quoted.
+       */
+      const variant = await makeVariant(10, 100_000); // ₱1,000 — below the ₱2,500 threshold
+      const rate = await makeZone();
+      const cartId = await getOrCreateCart(db, { guestToken: unique("g") });
+      await addItem(db, cartId, variant.id, 1);
+
+      const started = await startCheckout(cartId, GUEST, ADDRESS, rate.id, new Date(), db);
+      if (started.kind !== "ok") throw new Error(started.kind);
+
+      const order = await db.order.findUniqueOrThrow({ where: { id: started.orderId } });
+      expect(order.subtotalCents).toBe(100_000);
+      expect(order.shippingCents).toBe(8_000);
+      expect(order.totalCents).toBe(108_000);
+    });
+
+    it("ignores a shipping rate id that is not on offer for this basket", async () => {
+      // A rate id from somewhere else cannot be smuggled in: checkout looks it up among the
+      // options it computed itself, and falls back to the first when it is not there.
+      const variant = await makeVariant(10, 100_000);
+      const rate = await makeZone();
+      void rate;
+      const cartId = await getOrCreateCart(db, { guestToken: unique("g") });
+      await addItem(db, cartId, variant.id, 1);
+
+      const started = await startCheckout(
+        cartId,
+        GUEST,
+        ADDRESS,
+        "not-a-real-rate",
+        new Date(),
+        db
+      );
+      if (started.kind !== "ok") throw new Error(started.kind);
+
+      const order = await db.order.findUniqueOrThrow({ where: { id: started.orderId } });
+      // The real fee, not zero.
+      expect(order.shippingCents).toBe(8_000);
+    });
+
     it("writes the catalog price onto the order, whatever the request said", async () => {
       const variant = await makeVariant(10, 125_000);
       const rate = await makeZone();

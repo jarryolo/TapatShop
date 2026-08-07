@@ -17,7 +17,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const parsed = bodySchema.safeParse(await readJson(request));

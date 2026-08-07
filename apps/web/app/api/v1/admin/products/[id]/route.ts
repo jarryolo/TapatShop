@@ -5,8 +5,8 @@ import { productPatchSchema } from "@/lib/validators/product";
 
 type Context = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, context: Context) {
-  const guard = await requireStaff();
+export async function GET(request: Request, context: Context) {
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;
@@ -19,7 +19,7 @@ export async function GET(_request: Request, context: Context) {
 }
 
 export async function PATCH(request: Request, context: Context) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;
@@ -56,7 +56,7 @@ export async function PATCH(request: Request, context: Context) {
 }
 
 export async function DELETE(request: Request, context: Context) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

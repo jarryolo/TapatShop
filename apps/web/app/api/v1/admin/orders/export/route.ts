@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 
 import { requireStaff } from "@/lib/api/guard";
 import { failValidation } from "@/lib/api/respond";
@@ -17,9 +17,9 @@ const filterSchema = z.object({
   to: z.coerce.date().optional(),
 });
 
-/** CSV export of the current filter â€” docs/04. */
+/** CSV export of the current filter — docs/04. */
 export async function GET(request: Request) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const url = new URL(request.url);

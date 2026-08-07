@@ -20,7 +20,7 @@ const bodySchema = z.discriminatedUnion("decision", [
  * docs/01 — and nothing in that job needs the ability to erase a customer.
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireAdmin();
+  const guard = await requireAdmin(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

@@ -28,17 +28,31 @@ export async function POST(request: Request) {
   const email = normaliseEmail(parsed.data.email);
   const user = await db.user.findUnique({
     where: { email },
-    select: { passwordHash: true, accounts: { select: { provider: true } } },
+    // totpEnabledAt, never totpSecret. The form needs to know whether to show a code field.
+    select: {
+      passwordHash: true,
+      totpEnabledAt: true,
+      accounts: { select: { provider: true } },
+    },
   });
 
   if (!user) {
     // Shaped like a real answer so the response body has the same fields either way.
-    return ok({ exists: false, hasPassword: false, providers: [] });
+    return ok({ exists: false, hasPassword: false, providers: [], requiresTwoFactor: false });
   }
 
   return ok({
     exists: true,
     hasPassword: Boolean(user.passwordHash),
     providers: user.accounts.map((a) => a.provider),
+    /**
+     * Whether to ask for a code, which the sign-in attempt itself cannot say — the credentials
+     * provider returns one uniform failure by design, so "wrong password" and "no code given"
+     * are indistinguishable there.
+     *
+     * This adds nothing an attacker did not already have from this endpoint: it confirms
+     * account existence either way, and knowing an account has 2FA does not help defeat it.
+     */
+    requiresTwoFactor: user.totpEnabledAt !== null,
   });
 }

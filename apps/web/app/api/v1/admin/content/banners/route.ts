@@ -3,16 +3,16 @@ import { failValidation, ok, readJson } from "@/lib/api/respond";
 import { contentService } from "@/lib/services/content.service";
 import { bannerInputSchema } from "@/lib/validators/content";
 
-export async function GET() {
+export async function GET(request: Request) {
   // Re-checked here, not just in middleware. docs/02: middleware is a convenience.
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   return ok({ data: await contentService.list() });
 }
 
 export async function POST(request: Request) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const parsed = bannerInputSchema.safeParse(await readJson(request));

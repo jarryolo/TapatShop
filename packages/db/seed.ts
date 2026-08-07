@@ -22,6 +22,16 @@ const db = new PrismaClient();
 
 /** Dev-only. Argon2id, matching apps/web/lib/auth/password.ts so seeded logins work. */
 const DEV_PASSWORD = "tapatshop123";
+
+/**
+ * A fixed TOTP secret for the seeded staff accounts — dev only.
+ *
+ * P5-03 requires a second factor before staff or admin can open the admin, so a seed without
+ * one produces a database nobody can sign into. Fixed rather than random so it can be printed
+ * at the end and scanned once; it is a development convenience and has no business in any
+ * environment where the data is real.
+ */
+const DEV_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 const ARGON2_OPTIONS = { memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 const MEMBER_DISCOUNT_PERCENT = 10;
 
@@ -146,6 +156,8 @@ async function main() {
       role: "admin",
       privacyAgreedAt: daysAgo(200),
       lastLoginAt: daysAgo(1),
+      totpSecret: DEV_TOTP_SECRET,
+      totpEnabledAt: daysAgo(200),
     },
   });
 
@@ -161,6 +173,8 @@ async function main() {
       role: "staff",
       privacyAgreedAt: daysAgo(150),
       lastLoginAt: daysAgo(2),
+      totpSecret: DEV_TOTP_SECRET,
+      totpEnabledAt: daysAgo(150),
     },
   });
 
@@ -1316,6 +1330,9 @@ async function verify() {
   console.warn("Seed complete. Invariants I1-I7 hold.");
   console.warn(counts);
   console.warn(`Sign in with any seeded email and the password: ${DEV_PASSWORD}`);
+  console.warn(
+    `Staff and admin need a 2FA code. Add this secret to an authenticator app: ${DEV_TOTP_SECRET}`
+  );
 }
 
 main()

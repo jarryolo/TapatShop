@@ -13,7 +13,7 @@ const bodySchema = z.object({ value: z.union([z.string(), z.number(), z.boolean(
  * per-key read would be the obvious place for that masking to be forgotten.
  */
 export async function PUT(request: Request, context: { params: Promise<{ key: string }> }) {
-  const guard = await requireAdmin();
+  const guard = await requireAdmin(request);
   if (!guard.ok) return guard.response;
 
   const { key } = await context.params;

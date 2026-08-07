@@ -464,12 +464,36 @@ which is the thing worth finding.
   generic site card. Only visible by fetching the page and reading the tag.
 
 **P5-03 · Security pass.**
-- [ ] Rate limits on every sensitive endpoint
-- [ ] No secrets in the repo; `.env` gitignored
-- [ ] CSP, HSTS, and security headers set
-- [ ] Admin two-factor enabled
-- [ ] Dependency audit clean
-- [ ] Verified: no endpoint trusts a client-supplied price, quantity, or role
+- [x] Rate limits on every sensitive endpoint. **None of the 22 admin routes had one.** Folded
+      into `requireStaff`/`requireAdmin` rather than added per handler, and `request` is a
+      required parameter so the compiler names every call site — "remember to also rate limit
+      it" does not survive the twenty-third route. Keyed on the actor id, not the IP: the role
+      check already stops strangers, so the threat is a borrowed staff session.
+- [x] No secrets in the repo; `.env` gitignored. Checked working tree **and** history — `.env`
+      was never committed and no live-shaped key appears in any commit.
+- [x] CSP, HSTS and security headers set. Nonce-based CSP, not `'unsafe-inline'`: a policy that
+      permits arbitrary inline script buys nothing and would let this box be ticked for free.
+      HSTS is production-only, since pinning localhost to HTTPS breaks a dev machine until the
+      browser is cleared.
+- [x] Admin two-factor enabled. TOTP (RFC 6238) written here rather than added as a dependency,
+      and checked against the RFC's own published test vectors — a stronger guarantee than
+      trusting an unaudited package with the thing between a stolen admin password and the shop.
+      Ten single-use recovery codes, stored hashed and shown once.
+- [x] Dependency audit clean. Two transitive packages (`postcss`, `sharp`) pinned past published
+      advisories via `pnpm-workspace.yaml` overrides. `pnpm audit` now exits 0.
+- [x] No endpoint trusts a client-supplied price, quantity or role. Swept every request schema:
+      no role or member flag is accepted anywhere, and the only two money values a client can
+      send are `seenSubtotalCents` (compared, never used to price) and the shipping quote's
+      `subtotalCents` (display only). Both now have tests proving checkout ignores them.
+      Quantity **is** client-supplied by design — docs/CLAUDE.md says the cart payload is
+      variant ids and quantities and nothing more.
+- **A privilege escalation was introduced and caught during this ticket.** Adding the CSP nonce
+  meant passing a callback to `auth()` in middleware, which *replaces* the `authorized` gate
+  rather than running after it — so for the length of that mistake staff could open
+  `/admin/settings` and `/admin/audit-logs`. The API refused them because route handlers
+  re-check server-side; the pages did not, because they never had. Fixed on both sides: the
+  gate is now explicit in the middleware callback, and all five admin-only pages check the role
+  themselves. `guarded-pages.test.ts` fails the build if a new one does not.
 
 **P5-04 · Performance and load test.**
 - [ ] LCP targets met on home, category, and product pages

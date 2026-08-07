@@ -17,8 +17,8 @@ const bodySchema = z.object({
 });
 
 /** The evidence an admin weighs before deciding — docs/07 wants two matching data points. */
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireAdmin();
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const guard = await requireAdmin(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;
@@ -35,7 +35,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
  * set a password, and there is no route in this codebase that lets an admin do so.
  */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireAdmin();
+  const guard = await requireAdmin(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

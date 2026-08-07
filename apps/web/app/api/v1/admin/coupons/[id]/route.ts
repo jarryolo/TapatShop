@@ -4,7 +4,7 @@ import { couponService } from "@/lib/services/coupon.service";
 import { couponPatchSchema } from "@/lib/validators/coupon";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;
@@ -32,7 +32,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
  * would take the history with it.
  */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

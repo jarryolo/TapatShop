@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { requireUser } from "@/lib/api/guard";
-import { fail, failValidation, ok, readJson } from "@/lib/api/respond";
+import { enforceRateLimit, fail, failValidation, ok, readJson } from "@/lib/api/respond";
 import { memberDiscountPercent } from "@/lib/services/catalog.service";
 import { wishlistService } from "@/lib/services/wishlist.service";
 
@@ -20,6 +20,9 @@ export async function GET() {
 export async function POST(request: Request) {
   const guard = await requireUser();
   if (!guard.ok) return guard.response;
+
+  const limited = await enforceRateLimit(request, "default", guard.actor.id);
+  if (limited) return limited;
 
   const parsed = bodySchema.safeParse(await readJson(request));
   if (!parsed.success) return failValidation(parsed.error);

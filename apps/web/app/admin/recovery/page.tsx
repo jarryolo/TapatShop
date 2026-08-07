@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdminPage } from "@/lib/api/guard";
 import { db } from "@/lib/db";
 import { listRecoveryRequests } from "@/lib/services/customer.service";
 import { formatDateTime } from "@/lib/utils/format";
@@ -19,6 +20,9 @@ const TONES: Record<string, BadgeTone> = {
 };
 
 export default async function AdminRecoveryPage() {
+  // Admin only. Re-checked here, not just in middleware, per docs/02.
+  await requireAdminPage();
+
   const requests = await listRecoveryRequests(db);
   const pending = requests.filter((request) => request.status === "pending");
 

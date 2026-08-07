@@ -13,7 +13,7 @@ const bodySchema = z.object({
 
 /** Records tracking, ships the order, and triggers the shipped email exactly once — P4-01. */
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await context.params;

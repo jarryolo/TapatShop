@@ -46,6 +46,19 @@ export const LIMITS = {
   /** A lookup, not a credential attempt, so it does not spend login attempts. */
   signInMethods: { limit: 10, windowSeconds: 60 },
   /**
+   * The admin API, keyed on the **actor id** rather than the IP.
+   *
+   * The threat here is not a stranger guessing — they cannot get past the role check. It is a
+   * stolen or borrowed staff session being used to enumerate customers or drive a script, and
+   * the one thing every such request shares is the account, not the address.
+   *
+   * Generous, because real admin work is bursty: a bulk edit or a long inventory session
+   * legitimately fires hundreds of reads a minute. This is a runaway ceiling, not a throttle.
+   */
+  adminRead: { limit: 600, windowSeconds: 60 },
+  /** Writes are far rarer than reads, and each one changes the shop. */
+  adminWrite: { limit: 120, windowSeconds: 60 },
+  /**
    * The per-IP backstop applied to every rate-limited endpoint, on top of the specific
    * limit. This is what stops one host trying one password against a thousand accounts —
    * the per-pair limits above never would.

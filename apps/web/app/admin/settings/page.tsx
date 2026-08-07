@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdminPage } from "@/lib/api/guard";
 import { db } from "@/lib/db";
 import { listSettings } from "@/lib/services/settings.service";
 
@@ -25,6 +26,9 @@ const GROUPS: { key: string; title: string; blurb: string }[] = [
 ];
 
 export default async function AdminSettingsPage() {
+  // Admin only. Re-checked here, not just in middleware, per docs/02.
+  await requireAdminPage();
+
   const settings = await listSettings(db);
 
   const rows: SettingRow[] = settings.map((setting) => ({

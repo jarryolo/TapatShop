@@ -18,7 +18,7 @@ const querySchema = z.object({
 
 /** `?lowStock=true` — docs/04. */
 export async function GET(request: Request) {
-  const guard = await requireStaff();
+  const guard = await requireStaff(request);
   if (!guard.ok) return guard.response;
 
   const url = new URL(request.url);

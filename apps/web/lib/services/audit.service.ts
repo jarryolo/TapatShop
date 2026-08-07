@@ -33,6 +33,9 @@ export type AuditAction =
   | "banner.create"
   | "banner.update"
   | "banner.delete"
+  | "user.two_factor_enabled"
+  | "user.two_factor_disabled"
+  | "user.recovery_code_used"
   | "user.erase"
   | "user.erase_refused"
   | "review.approve"
@@ -68,6 +71,8 @@ export interface AuditEntry {
  */
 const REDACTED = new Set([
   "passwordHash",
+  "totpSecret",
+  "recoveryCodes",
   "tokenHash",
   "codeHash",
   "accessToken",
