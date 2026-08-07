@@ -134,6 +134,8 @@ model User {
   wishlistItems  WishlistItem[]
   notifications  Notification[]
   stockSubs      StockSubscription[]
+  deletionRequests AccountDeletionRequest[] @relation("DeletionSubject")
+  deletionsReviewed AccountDeletionRequest[] @relation("DeletionReviewer")
   auditLogs      AuditLog[]        @relation("AuditActor")
   movements      InventoryMovement[]
   recoveryRequests AccountRecoveryRequest[] @relation("RecoverySubject")
@@ -739,6 +741,38 @@ model StockSubscription {
   @@unique([variantId, email])
   @@index([variantId, notifiedAt])
   @@map("stock_subscriptions")
+}
+
+enum DeletionStatus {
+  pending
+  completed
+  refused
+}
+
+/// A Data Privacy Act erasure request — RA 10173, and docs/01's compliance list.
+///
+/// A request, not a delete button. Completing it anonymises the person but keeps the order
+/// rows: BIR requires the invoice trail, and an ecommerce store that can erase its own sales
+/// records has a bigger problem than a privacy one. What actually happens is spelled out on
+/// the request screen so nobody is surprised by what survives.
+model AccountDeletionRequest {
+  id          String         @id @default(cuid())
+  userId      String
+  reason      String?        @db.Text
+  status      DeletionStatus @default(pending)
+  /// What the customer was told would happen, frozen at request time.
+  note        String?        @db.Text
+  reviewedById String?
+  reviewedAt  DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  user     User  @relation("DeletionSubject", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("DeletionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("account_deletion_requests")
 }
 
 model Banner {

@@ -28,6 +28,8 @@ export const ADMIN_NAV: readonly NavItem[] = [
   { label: "Customers", href: "/admin/customers", roles: STAFF_AND_ADMIN },
   // Admin-only: approving one of these moves an account to a different person's inbox.
   { label: "Account recovery", href: "/admin/recovery", roles: ADMIN_ONLY },
+  // Admin-only and irreversible: it erases a customer and rewrites their order rows.
+  { label: "Erasure requests", href: "/admin/deletion-requests", roles: ADMIN_ONLY },
   { label: "Coupons", href: "/admin/coupons", roles: STAFF_AND_ADMIN },
   { label: "Reviews", href: "/admin/reviews", roles: STAFF_AND_ADMIN },
   { label: "Content", href: "/admin/content", roles: STAFF_AND_ADMIN },

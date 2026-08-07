@@ -119,12 +119,26 @@ export function RegisterForm() {
       </Field>
 
       {/* Two separate checkboxes, never bundled — docs/07 and the Data Privacy Act. */}
-      <Checkbox
-        id="privacyAgreed"
-        name="privacyAgreed"
-        label="I agree to the privacy policy"
-        required
-      />
+      <div className="flex flex-col gap-1">
+        <Checkbox
+          id="privacyAgreed"
+          name="privacyAgreed"
+          label="I agree to the privacy policy"
+          required
+        />
+        {/*
+          docs/07 wants this linked to the policy. The link sits beside the label rather than
+          inside it: a link inside a <label> both follows the link and toggles the checkbox,
+          so agreeing would be a side effect of reading what you are agreeing to.
+        */}
+        <Link
+          href="/privacy"
+          target="_blank"
+          className="ml-7 text-[13px] font-semibold text-brand-600 hover:underline"
+        >
+          Read the privacy policy
+        </Link>
+      </div>
       <Checkbox
         id="marketingOptIn"
         name="marketingOptIn"

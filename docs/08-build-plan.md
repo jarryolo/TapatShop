@@ -418,6 +418,28 @@ which is the thing worth finding.
 ## Phase 5 — Launch readiness
 
 **P5-01 · Compliance pages.** Terms, privacy policy, returns policy, DPA consent, deletion request flow.
+- [x] `/terms`, `/privacy`, `/returns` exist. The footer had been linking to all three since
+      P2-01 and all three were 404s. Each carries a last-reviewed date at the top.
+- [~] **Not reviewed by a lawyer.** The content describes what the system actually does — the
+      privacy page's retention and erasure sections match `privacy.service` line for line, and
+      "we never see your card" is true because docs/06 uses hosted checkout and there is no card
+      table. That is the part only the code can get right; the language still needs a
+      professional read before launch. **This is the outstanding item on this ticket.**
+- [x] DPA consent was already captured at registration (P1-05), unticked by default and separate
+      from marketing. It now links to the policy, which docs/07 asked for. The link sits beside
+      the label rather than inside it: a link inside a `<label>` also toggles the checkbox, so
+      agreeing would be a side effect of reading what you are agreeing to.
+- [x] Erasure request flow, `POST /me/deletion-request` per docs/04, with an admin-only review
+      screen. Verified over HTTP end to end on a throwaway account: no personal data left in any
+      table, the sale intact with its order number, amount and paid date, the frozen delivery
+      address replaced, and nothing leaked into the audit log.
+- The design decision worth arguing with before changing: **erasure anonymises the person, it
+  does not delete their orders.** BIR requires the invoice trail, and a shop that can erase its
+  own sales records has a worse problem than a privacy one. The customer is shown exactly what
+  stays and why before they confirm, and those terms are frozen onto the request so a later
+  policy change cannot rewrite what they agreed to.
+- Staff and admin accounts are refused: their id is referenced by every audit row they wrote,
+  and anonymising an actor is how an audit log stops answering "who did this".
 
 **P5-02 · SEO and metadata.** Product structured data, sitemap, robots, OG images, canonical URLs.
 

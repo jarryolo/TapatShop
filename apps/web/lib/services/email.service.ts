@@ -21,7 +21,9 @@ export type EmailTemplate =
   | "order-delivered"
   | "order-refunded"
   // Fires on the out-of-stock → in-stock crossing, once per waiting subscription.
-  | "back-in-stock";
+  | "back-in-stock"
+  // Sent before the address is scrubbed, since afterwards we cannot reach them.
+  | "account-deleted";
 
 export interface EmailMessage {
   to: string;
