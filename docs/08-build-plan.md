@@ -99,14 +99,36 @@ Presigned S3 uploads, 1:1 auto-crop, WebP conversion, four responsive widths.
 
 **P1-07 · Admin shell.**
 Sidebar layout, role-based nav, `DataTable`, `StatusPill`, empty and loading states.
-- [~] Staff sees a reduced nav; settings and staff pages are admin-only — the nav filtering
-      and `canAccess` are built and tested, but the **role comes from a fixture**. The real
-      session check and `middleware.ts` gate land with P1-05. These pages are currently open
-      to anyone who knows the URL.
+- [x] Staff sees a reduced nav; settings and staff pages are admin-only. Verified over HTTP
+      with real signed-in sessions, not fixtures: a staff session gets 16 sidebar links and is
+      turned away from `/admin/settings`, `/admin/staff`, `/admin/audit-logs` and
+      `/admin/recovery`; an admin session gets 21 links and reaches all four.
+      **The staff page did not exist.** The sidebar had linked to `/admin/staff` since the
+      shell was built and every admin who clicked it got a 404 — `docs/01` and `docs/02` both
+      specify staff management as admin-only, and it was simply never written. Built now:
+      list current access, promote by exact email, change or remove a role.
+      It changes a role and nothing else. No invites and no password, ever — CLAUDE.md is
+      explicit that an admin can neither read nor set one, so the person registers themselves
+      first. That also means there is no path here that mints a privileged account from
+      nothing. Three refusals, each a way to lose the store rather than a matter of taste:
+      you cannot change your own role; the last admin cannot be demoted; and the last-admin
+      count is taken `FOR UPDATE`, because two concurrent demotions otherwise both read
+      "two admins" from their own snapshot and commit — **verified by removing the lock, which
+      leaves zero admins**. A role change also stamps `sessionsRevokedAt`, or the demoted
+      person keeps their old role until their JWT happens to refresh.
 - [x] Table supports sort, filter, pagination, and keyboard navigation
 
-Built ahead of P1-05 while the database was unavailable, so it renders fixture data. Delete
-`lib/admin/fixtures.ts` when auth lands.
+`lib/admin/fixtures.ts` is gone; every admin page reads real data.
+
+The static guard test now fails when a nav entry has no page behind it. It previously treated
+a missing directory as "nothing to guard yet" and returned — which is exactly why the
+`/admin/staff` 404 survived a green suite for the whole project.
+
+Note, not a defect of this ticket: `/api/v1/admin/*` answers an unauthorised **API** call with
+a 307 to `/signin` rather than a JSON 403, because middleware gates the API on the same rules
+as the pages. Every admin endpoint behaves this way, and `/api/v1` is the contract for the
+mobile app (P6), which cannot follow a redirect to an HTML sign-in page. Worth settling before
+Phase 6.
 
 **P1-08 · Product and category management.**
 Full CRUD, variant matrix editor, drag-and-drop image ordering, publish/unpublish.

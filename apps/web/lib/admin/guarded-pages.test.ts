@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -36,6 +36,23 @@ function pagesUnder(dir: string): string[] {
   return found;
 }
 
+describe("the sidebar", () => {
+  /**
+   * Every link in the nav must have a page behind it.
+   *
+   * `/admin/staff` did not, and nothing said so: the nav is a hand-written list, the pages are
+   * directories, and nothing tied the two together. An admin clicking Staff got a 404 while the
+   * whole suite passed.
+   */
+  for (const item of ADMIN_NAV) {
+    it(`${item.href} has a page`, () => {
+      const dir =
+        item.href === "/admin" ? ADMIN_DIR : join(ADMIN_DIR, item.href.slice("/admin/".length));
+      expect(existsSync(join(dir, "page.tsx")), `the sidebar links to ${item.href}`).toBe(true);
+    });
+  }
+});
+
 describe("admin-only pages", () => {
   it("has at least one admin-only section, or this test proves nothing", () => {
     expect(ADMIN_ONLY_SEGMENTS.length).toBeGreaterThan(0);
@@ -45,15 +62,16 @@ describe("admin-only pages", () => {
     const dir = join(ADMIN_DIR, segment);
 
     it(`/admin/${segment} checks the role server-side on every page`, () => {
-      let pages: string[];
-      try {
-        pages = pagesUnder(dir);
-      } catch {
-        // The nav lists a section that has no pages yet. Nothing to guard.
-        return;
-      }
-
-      expect(pages.length).toBeGreaterThan(0);
+      /**
+       * A missing directory used to `return` here as "nothing to guard yet". That is what let
+       * the sidebar link to /admin/staff for the length of the project with no page behind it:
+       * every admin who clicked Staff got a 404, and the suite stayed green because the check
+       * excused itself. A nav entry is a promise that the page exists.
+       */
+      const pages = pagesUnder(dir);
+      expect(pages.length, `${dir} — the sidebar links here but there is no page`).toBeGreaterThan(
+        0
+      );
 
       for (const page of pages) {
         const source = readFileSync(page, "utf8");
