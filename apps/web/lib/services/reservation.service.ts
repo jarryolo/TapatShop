@@ -90,6 +90,39 @@ export async function availableStockMany(
   );
 }
 
+/**
+ * The same figure as `availableStockMany`, read so that it is actually current.
+ *
+ * Only for use inside a transaction that already holds `FOR UPDATE` on these variants — the
+ * reserving path. Everywhere else (catalogue, product page, admin) a snapshot read is right:
+ * it is cheaper, it takes no locks, and a stock figure on a listing page is a display value
+ * that was going to be a moment stale anyway.
+ */
+export async function availableStockLocking(
+  tx: Prisma.TransactionClient,
+  variantIds: string[],
+  now = new Date()
+): Promise<Map<string, number>> {
+  const available = new Map<string, number>();
+
+  for (const variantId of variantIds) {
+    const [stock] = await tx.$queryRaw<{ stockQty: number }[]>`
+      SELECT stockQty FROM product_variants WHERE id = ${variantId} FOR UPDATE`;
+
+    const [held] = await tx.$queryRaw<{ held: bigint | number | null }[]>`
+      SELECT COALESCE(SUM(quantity), 0) AS held
+      FROM stock_reservations
+      WHERE variantId = ${variantId}
+        AND releasedAt IS NULL
+        AND expiresAt > ${now}
+      FOR UPDATE`;
+
+    available.set(variantId, Math.max(0, (stock?.stockQty ?? 0) - Number(held?.held ?? 0)));
+  }
+
+  return available;
+}
+
 // ─────────────────────────────  reserving  ─────────────────────────────
 
 export interface ReservationLine {
@@ -141,8 +174,23 @@ export async function reserve(
     await tx.$queryRaw`SELECT id FROM product_variants WHERE id = ${line.variantId} FOR UPDATE`;
   }
 
-  // Read availability only after the locks are held, so these numbers cannot move underneath.
-  const available = await availableStockMany(
+  /**
+   * Availability, read with locking reads — not `availableStockMany`.
+   *
+   * This is the difference between the lock working and only appearing to. MySQL's default
+   * isolation is REPEATABLE READ, where a *plain* SELECT returns the transaction's snapshot,
+   * taken at its first read. In checkout that first read is `validateCheckout`, long before
+   * the FOR UPDATE above — so a plain read here reports the stock and reservations as they
+   * were before any concurrent buyer committed, and every one of them is told there is stock.
+   *
+   * P5-04's load test caught it: 100 buyers, one unit, and thirty of them got past this check.
+   * Nothing oversold only because they then collided on the order number and rolled back.
+   *
+   * A locking read is what forces the latest committed rows to be seen. The `FOR UPDATE` on
+   * stock_reservations also gap-locks the range, so a concurrent INSERT of a new reservation
+   * blocks rather than slipping in behind this count.
+   */
+  const available = await availableStockLocking(
     tx,
     ordered.map((line) => line.variantId),
     now

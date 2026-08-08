@@ -1,4 +1,5 @@
-import type { Coupon, Prisma, PrismaClient } from "@tapatshop/db";
+import { Prisma } from "@tapatshop/db";
+import type { Coupon, PrismaClient } from "@tapatshop/db";
 
 import { db } from "@/lib/db";
 import { type Cents, percentOf } from "@/lib/utils/money";
@@ -200,29 +201,43 @@ export const COUPON_HOLD_SECONDS = 900;
  * redemption-time counting was protecting against in the first place.
  */
 async function usesInFlight(
-  tx: Db,
+  // A transaction client, not `Db`: locking reads are meaningless outside one.
+  tx: Prisma.TransactionClient,
   coupon: { id: string; code: string },
   now: Date,
   userId?: string | null
 ): Promise<number> {
   const heldSince = new Date(now.getTime() - COUPON_HOLD_SECONDS * 1000);
 
-  const [redeemed, holding] = await Promise.all([
-    tx.couponRedemption.count({
-      where: { couponId: coupon.id, ...(userId ? { userId } : {}) },
-    }),
-    tx.order.count({
-      where: {
-        couponCode: coupon.code,
-        paymentStatus: "awaiting_payment",
-        status: { not: "cancelled" },
-        placedAt: { gte: heldSince },
-        ...(userId ? { userId } : {}),
-      },
-    }),
-  ]);
+  /**
+   * Locking reads, not `count()`.
+   *
+   * The caller already holds `FOR UPDATE` on the coupon row, which is what serialises claims —
+   * but MySQL's default REPEATABLE READ means a *plain* read still answers from the snapshot
+   * the transaction took at its first statement, long before that lock. So every concurrent
+   * checkout counted the uses as they were before any of the others committed, and every one
+   * of them was told the last use was still free.
+   *
+   * P5-04's load test caught it: a single-use coupon went to thirty of a hundred buyers. Same
+   * root cause as the overselling bug in reservation.service, and it has to be fixed the same
+   * way — the lock was never the missing piece, the freshness of the read was.
+   */
+  const [redeemedRow] = await tx.$queryRaw<{ n: bigint | number }[]>`
+    SELECT COUNT(*) AS n FROM coupon_redemptions
+    WHERE couponId = ${coupon.id}
+      ${userId ? Prisma.sql`AND userId = ${userId}` : Prisma.empty}
+    FOR UPDATE`;
 
-  return redeemed + holding;
+  const [holdingRow] = await tx.$queryRaw<{ n: bigint | number }[]>`
+    SELECT COUNT(*) AS n FROM orders
+    WHERE couponCode = ${coupon.code}
+      AND paymentStatus = 'awaiting_payment'
+      AND status <> 'cancelled'
+      AND placedAt >= ${heldSince}
+      ${userId ? Prisma.sql`AND userId = ${userId}` : Prisma.empty}
+    FOR UPDATE`;
+
+  return Number(redeemedRow?.n ?? 0) + Number(holdingRow?.n ?? 0);
 }
 
 export type ClaimResult = { kind: "ok" } | ({ kind: "rejected" } & CouponRejection);

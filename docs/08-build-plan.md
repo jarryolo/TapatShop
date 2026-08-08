@@ -496,8 +496,29 @@ which is the thing worth finding.
   themselves. `guarded-pages.test.ts` fails the build if a new one does not.
 
 **P5-04 · Performance and load test.**
-- [ ] LCP targets met on home, category, and product pages
-- [ ] 100 concurrent checkouts without stock corruption
+- [ ] LCP targets met on home, category, and product pages — **still not measured.** Same
+      blocker as P2-01: needs a throttled browser profile, and the real lever is product
+      images, which are unoptimised `<img>` until P1-06 lands.
+- [x] 100 concurrent checkouts without stock corruption. **It did not hold, and the test found
+      three separate bugs.** All three shared one root cause and none was visible to the
+      existing suite, which exercised each lock in isolation and stopped at ten.
+  - **Overselling.** `reserve()` took `FOR UPDATE` on the variant and then read availability
+    with a *plain* SELECT. MySQL's default REPEATABLE READ answers a plain read from the
+    transaction's snapshot — taken at its first statement, which in checkout is
+    `validateCheckout`, long before the lock. Thirty of a hundred buyers got past the check on
+    one unit of stock. The lock was never missing; the freshness of the read was.
+  - **Order-number collisions.** `nextOrderNo` read the highest existing number and added one,
+    so concurrent checkouts all produced the same number and the losers hit the unique index
+    *after* reserving stock — a race surfacing as a customer-facing 500. Replaced with an
+    `order_sequences` row incremented under its own lock. The migration seeds it from existing
+    orders so numbering continues rather than restarting at 1.
+  - **A single-use coupon went to thirty buyers**, by exactly the same stale-snapshot
+    mechanism in `claimCoupon`.
+  - Ironically the overselling was masked: the thirty who oversold then collided on the order
+    number and rolled back, so the symptom looked like a numbering bug rather than a stock one.
+- Verified: 100 concurrent checkouts on 40 units sells exactly 40; on 1 unit sells exactly 1;
+  a single-use coupon discounts exactly one order; and `stockQty` is untouched by reservations
+  with zero drift against the ledger. Full suite 603 passing.
 
 **P5-05 · Backups and monitoring.**
 - [ ] Nightly `mysqldump` off-server

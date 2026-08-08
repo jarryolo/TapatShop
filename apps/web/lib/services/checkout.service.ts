@@ -184,16 +184,25 @@ export type StartCheckoutResult =
  * a row cannot cause a collision. It runs inside the checkout transaction, after the
  * reservation locks are held.
  */
-export async function nextOrderNo(tx: Db, year: number): Promise<string> {
-  const prefix = `TS-${year}-`;
-  const latest = await tx.order.findFirst({
-    where: { orderNo: { startsWith: prefix } },
-    orderBy: { orderNo: "desc" },
-    select: { orderNo: true },
-  });
+export async function nextOrderNo(tx: Prisma.TransactionClient, year: number): Promise<string> {
+  /**
+   * One statement: insert the year's row if it is missing, otherwise bump it.
+   *
+   * `ON DUPLICATE KEY UPDATE` takes an exclusive lock on the row, so concurrent checkouts
+   * queue here rather than all reading the same value. The previous version read the highest
+   * existing order number and added one, which under load handed the same number to every
+   * checkout in flight — and the losers failed on the unique index *after* reserving stock,
+   * turning a race into a customer-visible 500.
+   */
+  await tx.$executeRaw`
+    INSERT INTO order_sequences (year, lastValue, updatedAt)
+    VALUES (${year}, 1, NOW(3))
+    ON DUPLICATE KEY UPDATE lastValue = lastValue + 1, updatedAt = NOW(3)`;
 
-  const lastSequence = latest ? Number(latest.orderNo.slice(prefix.length)) : 0;
-  return `${prefix}${String(lastSequence + 1).padStart(6, "0")}`;
+  const [row] = await tx.$queryRaw<{ lastValue: number }[]>`
+    SELECT lastValue FROM order_sequences WHERE year = ${year}`;
+
+  return `TS-${year}-${String(row?.lastValue ?? 1).padStart(6, "0")}`;
 }
 
 /**

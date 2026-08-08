@@ -752,6 +752,24 @@ model StockSubscription {
   @@map("stock_subscriptions")
 }
 
+/// One row per year, holding the last order number issued — P5-04.
+///
+/// Order numbers used to be derived by reading the highest existing one and adding a step.
+/// Under concurrency every checkout in flight read the same maximum and produced the same
+/// number, and the loser of that race got a unique-constraint error *after* its stock was
+/// reserved. The load test saw twenty-nine of a hundred fail that way.
+///
+/// A row that can be locked FOR UPDATE turns "what is next" into a question with one answer at
+/// a time. Deleting an order still cannot cause a reuse, which is why the old version read the
+/// maximum rather than counting rows.
+model OrderSequence {
+  year      Int      @id
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("order_sequences")
+}
+
 enum DeletionStatus {
   pending
   completed
