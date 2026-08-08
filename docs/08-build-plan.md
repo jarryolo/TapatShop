@@ -521,9 +521,26 @@ which is the thing worth finding.
   with zero drift against the ledger. Full suite 603 passing.
 
 **P5-05 · Backups and monitoring.**
-- [ ] Nightly `mysqldump` off-server
-- [ ] **A restore has been performed on a clean machine and verified**
-- [ ] Sentry, uptime checks, and a webhook-silence alert are live
+- [x] Nightly `mysqldump` off-server — `scripts/backup.sh`, run for real rather than written
+      and assumed. `--single-transaction` so it does not lock out checkouts, `--routines
+      --triggers --events` because mysqldump omits them by default, `--set-gtid-purged=OFF` so
+      the dump restores into a fresh server at all. It refuses to keep a dump that is not valid
+      gzip or holds fewer than ten tables — a failed dump still produces a file and still exits
+      0, which is how a backup silently becomes nothing.
+- [x] **A restore has been performed on a clean machine and verified.** Two throwaway MySQL
+      instances: one seeded and backed up, one with a fresh data directory that had never seen
+      the schema. Four checks, and the last two are the ones that mean something:
+      35 tables present; **every table's `CHECKSUM TABLE` identical** (content, not row counts —
+      a mangled value passes a count check); `pnpm db:reconcile` clean on the restored data, so
+      invariant I4 holds; and `prisma migrate status` reporting the schema current.
+      Written up in `docs/09-runbook-restore.md` from the commands that were actually run.
+- [~] Sentry, uptime checks, and a webhook-silence alert. **The uptime check exists** —
+      `/api/v1/health/ready` checks MySQL and Redis and returns 503 when either is down, added
+      after `/health` returned 200 through a total outage. Sentry needs a DSN and the
+      webhook-silence alert needs the PayMongo webhook (P3-05), so both are still outstanding.
+- The runbook's last step is the one that is easy to leave out: a nightly backup means a
+  restore loses up to 24 hours of orders, and those customers were charged by PayMongo and now
+  have no order. Reconciling that by hand is the real cost of a restore.
 
 **P5-06 · PayMongo go-live.** Live keys, production webhook registered, payout account
 verified, one real low-value transaction completed and refunded end to end.
