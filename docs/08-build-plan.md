@@ -190,14 +190,24 @@ expiry, usage caps and member-only rules are enforced together.
 Staging environment with a webhook tunnel must exist before starting.
 
 **P3-01 · Shipping rules.** Zones, rates, free-shipping threshold, PH address cascade.
-- [~] Region → province → city → barangay cascade works with real PH data — the cascade
-      works and the data is real, but the dataset is **incomplete on purpose**. All 17
-      regions and all 82 provinces are there; cities and barangays cover NCR in full plus
-      the largest city per region. The Philippines has ~1,600 cities and ~42,000 barangays,
-      and writing those by hand would introduce errors that misroute deliveries silently.
-      **Before launch: import the PSA PSGC dataset** (https://psa.gov.ph/classification/psgc).
-      The form falls back to free text wherever the dataset is thin, so a partial import
-      cannot block a sale.
+- [x] Region → province → city → barangay cascade works with real PH data — the full PSGC
+      is now imported: **17 regions, 81 provinces, 1,648 cities and municipalities, 42,046
+      barangays**, zero orphans. Walked end to end over HTTP (Region VII → Cebu → City of
+      Cebu → 80 barangays; NCR skips the province level and returns its 31 cities).
+      The data moved into MySQL rather than growing the bundled module — the address form is
+      a client component, so completing the module would have shipped the whole country to
+      every shopper. It fetches one level at a time from `/api/v1/locations`, and still falls
+      back to free text at every level, so an endpoint having a bad day cannot block a sale.
+      Two carry-overs, neither blocking:
+      **(a)** the import reads `psgc.gitlab.io`, a mirror of the PSA publication, not
+      `psa.gov.ph` — parsing the PSA's .xlsx would mean adding a spreadsheet dependency.
+      Every row keeps its official 10-digit code, so reconciling against the PSA file is a
+      join rather than a fuzzy name match. **Someone should spot-check a sample against the
+      PSA publication before launch** — a mirror is a convenience, not an authority.
+      **(b)** the importer refuses any region whose PSGC code it has no shipping key for.
+      When the PSA adds one (Negros Island Region, 2024) the import stops and asks, rather
+      than inventing a key no zone references — which would read as "we do not ship there"
+      to everyone in that region, with nothing in the system saying so.
 - [x] Quote endpoint returns correct rates for each zone — verified live across all four
       seeded zones; the seed covers every one of the 17 regions
 - [x] Free-shipping threshold applies at exactly the boundary value — ₱2,499 pays ₱80,

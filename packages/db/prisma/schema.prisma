@@ -752,6 +752,68 @@ model StockSubscription {
   @@map("stock_subscriptions")
 }
 
+/// The PSA's Philippine Standard Geographic Code — P3-01, completed in P5.
+///
+/// In the database rather than a TypeScript module, because there are 42,046 barangays. The
+/// address form is a client component that imported the old hand-written list directly, so
+/// finishing the dataset that way would have shipped roughly eleven megabytes of JavaScript to
+/// every shopper. It queries `/api/v1/locations` instead.
+///
+/// The 10-digit PSGC code is kept on every row, so a later re-import can be reconciled against
+/// the PSA's own publication rather than matched on names that get respelled.
+model PhRegion {
+  code      String @id
+  name      String
+  /// "NCR", "Region IV-A" — what shipping zones are keyed on.
+  regionKey String @unique
+
+  provinces PhProvince[]
+  cities    PhCity[]
+
+  @@map("ph_regions")
+}
+
+model PhProvince {
+  code       String @id
+  name       String
+  regionCode String
+
+  region PhRegion @relation(fields: [regionCode], references: [code], onDelete: Cascade)
+  cities PhCity[]
+
+  @@index([regionCode])
+  @@map("ph_provinces")
+}
+
+model PhCity {
+  code         String  @id
+  name         String
+  /// City, municipality, or sub-municipality — shown to the customer as written.
+  kind         String
+  /// NCR's cities sit directly under the region: the capital has no province.
+  provinceCode String?
+  regionCode   String
+
+  province   PhProvince?   @relation(fields: [provinceCode], references: [code], onDelete: Cascade)
+  region     PhRegion      @relation(fields: [regionCode], references: [code], onDelete: Cascade)
+  barangays  PhBarangay[]
+
+  @@index([provinceCode])
+  @@index([regionCode])
+  @@map("ph_cities")
+}
+
+model PhBarangay {
+  code     String @id
+  name     String
+  cityCode String
+
+  city PhCity @relation(fields: [cityCode], references: [code], onDelete: Cascade)
+
+  @@index([cityCode])
+  @@map("ph_barangays")
+}
+
 /// One row per year, holding the last order number issued — P5-04.
 ///
 /// Order numbers used to be derived by reading the highest existing one and adding a step.

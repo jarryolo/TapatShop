@@ -24,6 +24,7 @@
     "db:seed": "dotenv -e .env -- tsx packages/db/seed.ts",
     "db:reconcile": "dotenv -e .env -- tsx packages/db/reconcile.ts",
     "db:test:prepare": "dotenv -e .env -- node scripts/db-test-prepare.mjs",
+    "db:import:psgc": "dotenv -e .env -- node scripts/import-psgc.mjs",
     "db:reset": "dotenv -e .env -- pnpm --filter @tapatshop/db exec prisma migrate reset --force --skip-generate && pnpm db:seed",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.yml down",

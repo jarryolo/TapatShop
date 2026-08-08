@@ -1,23 +1,20 @@
 /**
- * Philippine administrative divisions, for the address cascade.
+ * Regions and provinces, for shipping.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * INCOMPLETE ON PURPOSE, AND THIS MATTERS BEFORE LAUNCH.
+ * NOT THE ADDRESS CASCADE. That is the PSGC tables — `lib/services/locations.service.ts`,
+ * loaded by `pnpm db:import:psgc` — which holds all 42,046 barangays.
  *
- * All 17 regions and all 82 provinces are here and are the real ones. Cities,
- * municipalities and barangays are NOT complete — the Philippines has roughly 1,600
- * cities and municipalities and over 42,000 barangays, and that list cannot be written
- * out by hand without introducing errors that would silently misroute deliveries.
+ * This file is the small part shipping needs to answer *synchronously*: `shipping.service.ts`
+ * resolves a stored address to a zone while quoting, and reaching for the database on that
+ * path would make every quote a round trip. Cities and barangays were removed when the
+ * cascade moved to the database; nothing here needs them.
  *
- * What is here covers NCR in full plus the largest city in each other region, which is
- * enough to build and test the cascade against. Before launch, import the official
- * PSGC (Philippine Standard Geographic Code) dataset published quarterly by the PSA:
- *
- *   https://psa.gov.ph/classification/psgc
- *
- * The shape below is what the importer should produce. `shippingRegion` is the only field
- * the shipping calculation reads, so a bad import shows up as a wrong shipping fee rather
- * than a crash — check the region mapping first if quotes look wrong.
+ * So keep it small. If something needs more than a region or a province, it wants the
+ * service, not this file. `code` is the string shipping zones are configured against, and the
+ * integration tests assert these keys and the imported regions match in both directions — a
+ * region here with no imported counterpart is a zone that can never match an address, and one
+ * there with no key here is a region nothing ships to.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -30,13 +27,6 @@ export interface Region {
 export interface Province {
   name: string;
   regionCode: string;
-}
-
-export interface City {
-  name: string;
-  province: string;
-  /** Whether it is a city or a municipality. Only ever shown, never used in logic. */
-  kind: "city" | "municipality";
 }
 
 export const REGIONS: Region[] = [
@@ -161,92 +151,12 @@ export const PROVINCES: Province[] = [
 ];
 
 /**
- * NCR's cities are complete. Everywhere else has only the largest city, enough to exercise
- * the cascade — see the header. The full list comes from the PSGC import.
- */
-export const CITIES: City[] = [
-  // NCR — 16 cities and one municipality (Pateros). This list is complete.
-  { name: "Caloocan", province: "Metro Manila", kind: "city" },
-  { name: "Las Piñas", province: "Metro Manila", kind: "city" },
-  { name: "Makati", province: "Metro Manila", kind: "city" },
-  { name: "Malabon", province: "Metro Manila", kind: "city" },
-  { name: "Mandaluyong", province: "Metro Manila", kind: "city" },
-  { name: "Manila", province: "Metro Manila", kind: "city" },
-  { name: "Marikina", province: "Metro Manila", kind: "city" },
-  { name: "Muntinlupa", province: "Metro Manila", kind: "city" },
-  { name: "Navotas", province: "Metro Manila", kind: "city" },
-  { name: "Parañaque", province: "Metro Manila", kind: "city" },
-  { name: "Pasay", province: "Metro Manila", kind: "city" },
-  { name: "Pasig", province: "Metro Manila", kind: "city" },
-  { name: "Pateros", province: "Metro Manila", kind: "municipality" },
-  { name: "Quezon City", province: "Metro Manila", kind: "city" },
-  { name: "San Juan", province: "Metro Manila", kind: "city" },
-  { name: "Taguig", province: "Metro Manila", kind: "city" },
-  { name: "Valenzuela", province: "Metro Manila", kind: "city" },
-
-  // One per region beyond NCR. Partial by design.
-  { name: "Baguio", province: "Benguet", kind: "city" },
-  { name: "Laoag", province: "Ilocos Norte", kind: "city" },
-  { name: "Dagupan", province: "Pangasinan", kind: "city" },
-  { name: "Tuguegarao", province: "Cagayan", kind: "city" },
-  { name: "San Fernando", province: "Pampanga", kind: "city" },
-  { name: "Angeles", province: "Pampanga", kind: "city" },
-  { name: "Malolos", province: "Bulacan", kind: "city" },
-  { name: "Bacoor", province: "Cavite", kind: "city" },
-  { name: "Dasmariñas", province: "Cavite", kind: "city" },
-  { name: "Calamba", province: "Laguna", kind: "city" },
-  { name: "Antipolo", province: "Rizal", kind: "city" },
-  { name: "Batangas City", province: "Batangas", kind: "city" },
-  { name: "Puerto Princesa", province: "Palawan", kind: "city" },
-  { name: "Calapan", province: "Oriental Mindoro", kind: "city" },
-  { name: "Legazpi", province: "Albay", kind: "city" },
-  { name: "Naga", province: "Camarines Sur", kind: "city" },
-  { name: "Iloilo City", province: "Iloilo", kind: "city" },
-  { name: "Bacolod", province: "Negros Occidental", kind: "city" },
-  { name: "Cebu City", province: "Cebu", kind: "city" },
-  { name: "Mandaue", province: "Cebu", kind: "city" },
-  { name: "Lapu-Lapu", province: "Cebu", kind: "city" },
-  { name: "Tagbilaran", province: "Bohol", kind: "city" },
-  { name: "Tacloban", province: "Leyte", kind: "city" },
-  { name: "Zamboanga City", province: "Zamboanga del Sur", kind: "city" },
-  { name: "Cagayan de Oro", province: "Misamis Oriental", kind: "city" },
-  { name: "Iligan", province: "Lanao del Norte", kind: "city" },
-  { name: "Davao City", province: "Davao del Sur", kind: "city" },
-  { name: "General Santos", province: "South Cotabato", kind: "city" },
-  { name: "Koronadal", province: "South Cotabato", kind: "city" },
-  { name: "Butuan", province: "Agusan del Norte", kind: "city" },
-  { name: "Surigao City", province: "Surigao del Norte", kind: "city" },
-  { name: "Cotabato City", province: "Maguindanao del Norte", kind: "city" },
-  { name: "Marawi", province: "Lanao del Sur", kind: "city" },
-];
-
-/**
- * Barangays are the level with 42,000 entries, so only a handful of examples are here.
+ * NCR's cities sit under this pseudo-province in *stored addresses*.
  *
- * The address form falls back to a free-text barangay field for any city not listed, which
- * is what keeps checkout working on a partial dataset instead of blocking the sale.
+ * The PSA files NCR's cities directly under the region and recognises no such province, so the
+ * PSGC tables do not contain it. It stays here because addresses already saved carry it, and a
+ * stored address must keep resolving to a shipping zone.
  */
-export const BARANGAYS: Record<string, string[]> = {
-  "Quezon City": [
-    "Bagumbayan",
-    "Batasan Hills",
-    "Commonwealth",
-    "Diliman",
-    "Fairview",
-    "Holy Spirit",
-    "Loyola Heights",
-    "Novaliches",
-    "Payatas",
-    "Project 4",
-    "San Francisco del Monte",
-    "UP Campus",
-  ],
-  Makati: ["Bel-Air", "Poblacion", "San Antonio", "San Lorenzo", "Bangkal", "Guadalupe Nuevo"],
-  "Cebu City": ["Lahug", "Guadalupe", "Mabolo", "Talamban", "Banilad", "Capitol Site"],
-  "Davao City": ["Poblacion", "Buhangin", "Talomo", "Toril", "Agdao", "Matina"],
-};
-
-/** NCR's cities sit under this pseudo-province so the cascade has four levels everywhere. */
 export const NCR_PROVINCE = "Metro Manila";
 
 export function provincesFor(regionCode: string): string[] {
@@ -254,16 +164,6 @@ export function provincesFor(regionCode: string): string[] {
   return PROVINCES.filter((province) => province.regionCode === regionCode)
     .map((province) => province.name)
     .sort((a, b) => a.localeCompare(b));
-}
-
-export function citiesFor(provinceName: string): City[] {
-  return [...CITIES.filter((city) => city.province === provinceName)].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-}
-
-export function barangaysFor(cityName: string): string[] {
-  return BARANGAYS[cityName] ?? [];
 }
 
 /** The region a province belongs to. Used to price shipping from a stored address. */

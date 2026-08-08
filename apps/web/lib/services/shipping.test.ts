@@ -4,8 +4,6 @@ import {
   NCR_PROVINCE,
   PROVINCES,
   REGIONS,
-  barangaysFor,
-  citiesFor,
   isKnownRegion,
   provincesFor,
   regionForProvince,
@@ -132,14 +130,6 @@ describe("PH location data", () => {
     expect(regionForProvince(NCR_PROVINCE)).toBe("NCR");
   });
 
-  it("lists all 17 NCR cities and municipalities", () => {
-    const ncr = citiesFor(NCR_PROVINCE);
-    expect(ncr).toHaveLength(17);
-    expect(ncr.filter((city) => city.kind === "municipality").map((c) => c.name)).toEqual([
-      "Pateros",
-    ]);
-  });
-
   it("maps a province back to its region", () => {
     expect(regionForProvince("Cebu")).toBe("Region VII");
     expect(regionForProvince("Pampanga")).toBe("Region III");
@@ -149,12 +139,5 @@ describe("PH location data", () => {
   it("returns provinces sorted, so the dropdown is scannable", () => {
     const sorted = [...provincesFor("Region VII")].sort((a, b) => a.localeCompare(b));
     expect(provincesFor("Region VII")).toEqual(sorted);
-  });
-
-  it("returns an empty barangay list for a city the dataset does not cover", () => {
-    // Not a failure — the form falls back to free text so a partial dataset cannot block a
-    // sale. See the header of lib/data/ph-locations.ts.
-    expect(barangaysFor("Butuan")).toEqual([]);
-    expect(barangaysFor("Quezon City").length).toBeGreaterThan(0);
   });
 });
