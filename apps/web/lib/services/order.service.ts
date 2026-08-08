@@ -326,46 +326,51 @@ export async function customerTimeline(tx: Db, orderId: string) {
 export type TrackResult =
   { kind: "ok"; order: Awaited<ReturnType<typeof loadTrackedOrder>> } | { kind: "not_found" };
 
-async function loadTrackedOrder(tx: Db, orderNo: string) {
-  const order = await tx.order.findUniqueOrThrow({
-    where: { orderNo },
+/**
+ * Everything a customer may see about their own order, and nothing else.
+ *
+ * Shared by guest tracking and the signed-in account area so the two cannot drift — the risk
+ * being that one of them grows a field the other deliberately withholds. `events` is filtered
+ * to `isPublic` here rather than at the call site for the same reason: internal notes are one
+ * forgotten `where` away from being customer-visible.
+ */
+export const customerOrderSelect = {
+  orderNo: true,
+  status: true,
+  paymentStatus: true,
+  fulfillmentStatus: true,
+  subtotalCents: true,
+  shippingCents: true,
+  discountCents: true,
+  totalCents: true,
+  carrier: true,
+  trackingNumber: true,
+  placedAt: true,
+  shippedAt: true,
+  deliveredAt: true,
+  customerName: true,
+  shippingAddress: true,
+  items: {
     select: {
-      orderNo: true,
-      status: true,
-      paymentStatus: true,
-      fulfillmentStatus: true,
-      subtotalCents: true,
-      shippingCents: true,
-      discountCents: true,
-      totalCents: true,
-      carrier: true,
-      trackingNumber: true,
-      placedAt: true,
-      shippedAt: true,
-      deliveredAt: true,
-      customerName: true,
-      shippingAddress: true,
-      items: {
-        select: {
-          id: true,
-          productName: true,
-          variantName: true,
-          sku: true,
-          imageUrl: true,
-          unitPriceCents: true,
-          quantity: true,
-          lineTotalCents: true,
-        },
-      },
-      events: {
-        where: { isPublic: true },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, type: true, message: true, createdAt: true },
-      },
+      id: true,
+      productName: true,
+      variantName: true,
+      sku: true,
+      imageUrl: true,
+      unitPriceCents: true,
+      quantity: true,
+      lineTotalCents: true,
     },
-  });
+  },
+  events: {
+    where: { isPublic: true },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, type: true, message: true, createdAt: true },
+  },
+} satisfies Prisma.OrderSelect;
 
-  return order;
+async function loadTrackedOrder(tx: Db, orderNo: string) {
+  return tx.order.findUniqueOrThrow({ where: { orderNo }, select: customerOrderSelect });
 }
 
 /**

@@ -205,6 +205,43 @@ out of stock; pressing it explains where the cart is rather than doing nothing.
 Coupons (`POST/DELETE /cart/coupon` in docs/04) are deferred to P3-02, where eligibility,
 expiry, usage caps and member-only rules are enforced together.
 
+**P2-05 · Customer account.** Order list, order detail, and the account home.
+
+**This ticket was missing from the plan.** `docs/01` specifies an Account section — order list
+and detail with a status timeline and tracking number, reorder, address book, profile,
+notification preferences — and the plan went cart → checkout → admin without ever turning it
+into work. P4-04 covers *the admin's* view of customers, which is a different screen. Added
+2026-08-08 after the client pointed out there was nowhere to see your own orders.
+
+- [x] `/account` exists. The shop header has linked to it for every signed-in customer since
+      the layout was written, and nothing was there — clicking your own name gave a 404. Same
+      shape of bug as the `/admin/staff` link in P1-07, found the same week.
+- [x] Order list, newest first, with payment or delivery state and the total. Sorted on
+      `createdAt`, not `placedAt`: `placedAt` is null until payment confirms, so sorting on it
+      alone drops the unpaid order the buyer is looking at right now to the bottom of the list.
+- [x] Order detail with the public timeline and tracking number. The presentation is now one
+      `OrderSummary` component shared with guest tracking, which had it inline. Two copies
+      would drift in the direction that matters least — one quietly showing a field the other
+      withholds.
+- [x] A customer sees only their own orders. Verified over HTTP with two real sessions: the
+      second customer sees their own two orders and gets **404 on all three** of the first
+      customer's. A 404 rather than a 403, so the page cannot be used to discover which order
+      numbers exist — the same reasoning as guest tracking.
+- [x] Guest orders join the history once the account's email is verified, and **only** then.
+      Without the match, someone who checked out as a guest and then registered sees an empty
+      history and concludes the order is lost. With it unguarded, an order's delivery address
+      and phone number would go to anyone who signs up claiming someone else's email. That is
+      why `emailVerifiedAt` is consulted rather than trusting `user.email`.
+- [x] Internal order notes never reach the customer timeline — the select filters on
+      `isPublic`, with a test that says so.
+- [ ] Reorder — adds all still-available items back to the cart (`docs/01`).
+- [ ] Address book with a default address (`docs/01`).
+- [ ] Profile, password, and linked sign-in providers (`docs/01`).
+- [ ] Notification preferences (`docs/01`).
+
+The four unticked items are the rest of the spec's Account section. They are real scope, not
+polish, and none of them is started.
+
 ---
 
 ## Phase 3 — Checkout and payments
