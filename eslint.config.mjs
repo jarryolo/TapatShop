@@ -32,6 +32,15 @@ export default tseslint.config(
     settings: { ...config.settings, next: { rootDir: "apps/web" } },
   })),
 
+  // Operational scripts run under Node directly, not through Next's bundler, so `process`
+  // and `console` are globals rather than undefined identifiers.
+  {
+    files: ["scripts/**/*.{mjs,js}", "packages/db/*.ts"],
+    languageOptions: {
+      globals: { process: "readonly", console: "readonly", Buffer: "readonly" },
+    },
+  },
+
   {
     rules: {
       // docs/CLAUDE.md: no console.log left in a finished ticket. warn/error stay —
